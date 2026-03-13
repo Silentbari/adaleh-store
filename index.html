@@ -616,13 +616,22 @@ const INIT_CUSTOMERS=[
 /* ══════════════════════════════════════════════
    ROOT
 ══════════════════════════════════════════════ */
+const INIT_PROJECTS=[
+  {id:'proj_dabu1',name:'دبو القديمة',icon:'🏪',color:'#f59e0b',balance:0,transactions:[]},
+  {id:'proj_dabu2',name:'دبو الجديدة',icon:'🏬',color:'#3b82f6',balance:0,transactions:[]},
+  {id:'proj_bank',name:'بنكيلي',icon:'🏦',color:'#10b981',balance:0,transactions:[]},
+];
+
 function App(){
   const[auth,setAuth]=useState(null);
   const[adminPass,setAdminPass]=useState('1234');
+  const[storeName,setStoreName]=useState('محل العدالة');
+  const[storeSubtitle,setStoreSubtitle]=useState('للهواتف والاكسسوارات');
   const[products,setProducts]=useState(INIT_PRODUCTS);
   const[customers,setCustomers]=useState(INIT_CUSTOMERS);
   const[invoices,setInvoices]=useState([]);
   const[special]=useState(INIT_SPECIAL);
+  const[projects,setProjects]=useState(INIT_PROJECTS);
   const[dbReady,setDbReady]=useState(false);
   const[syncing,setSyncing]=useState(false);
   const skipSave=useRef(false); // prevent echo on remote update
@@ -707,7 +716,7 @@ function App(){
   useEffect(()=>{
     if(!dbReady)return;
     const {fbSave}=window._fb;
-    fbSave('settings','config',{adminPass});
+    fbSave('settings','config',{adminPass,storeName,storeSubtitle});
   },[adminPass,dbReady]);
 
   const lowStockProds=useMemo(()=>products.filter(p=>p.qty<=p.lowStock),[products]);
@@ -716,6 +725,12 @@ function App(){
     const spVal=special.reduce((s,x)=>s+x.value,0);
     return prodVal+spVal;
   },[products,special]);
+
+  // Sync storeName to window for PrintableInvoice
+  useEffect(()=>{
+    window._storeName=storeName;
+    window._storeSubtitle=storeSubtitle;
+  },[storeName,storeSubtitle]);
 
   // Save projects to Firebase
   useEffect(()=>{
@@ -773,8 +788,8 @@ function App(){
     }
   }
 
-  if(!auth)return <LoginPage onLogin={setAuth} adminPass={adminPass} dbReady={dbReady}/>;
-  if(auth==='customer')return <CustomerView products={products} onLogout={()=>setAuth(null)}/>;
+  if(!auth)return <LoginPage onLogin={setAuth} adminPass={adminPass} dbReady={dbReady} storeName={storeName} storeSubtitle={storeSubtitle}/>;
+  if(auth==='customer')return <CustomerView products={products} onLogout={()=>setAuth(null)} storeName={storeName} storeSubtitle={storeSubtitle}/>;
   return <AdminApp
     products={products} setProducts={setProducts}
     customers={customers} setCustomers={setCustomers}
@@ -788,6 +803,9 @@ function App(){
     deleteProduct={deleteProduct}
     deleteCustomer={deleteCustomer}
     deleteInvoiceFb={deleteInvoiceFb}
+    storeName={storeName} setStoreName={setStoreName}
+    storeSubtitle={storeSubtitle} setStoreSubtitle={setStoreSubtitle}
+    projects={projects} setProjects={setProjects}
   />;
 }
 
@@ -857,7 +875,7 @@ function LoginPage({onLogin,adminPass,dbReady}){
 /* ══════════════════════════════════════════════
    ADMIN SHELL
 ══════════════════════════════════════════════ */
-function AdminApp({products,setProducts,customers,setCustomers,invoices,setInvoices,lowStockProds,totalInventoryValue,deductStock,onLogout,adminPass,setAdminPass,dbReady,deleteProduct,deleteCustomer,deleteInvoiceFb}){
+function AdminApp({products,setProducts,customers,setCustomers,invoices,setInvoices,lowStockProds,totalInventoryValue,deductStock,onLogout,adminPass,setAdminPass,dbReady,deleteProduct,deleteCustomer,deleteInvoiceFb,storeName,setStoreName,storeSubtitle,setStoreSubtitle,projects,setProjects}){
   const isMob=useIsMobile();
   const[tab,setTab]=useState('dashboard');
   const[showNotif,setShowNotif]=useState(false);
@@ -941,7 +959,7 @@ function AdminApp({products,setProducts,customers,setCustomers,invoices,setInvoi
         {tab==='invoice'&&<InvoiceTab products={products} setProducts={setProducts} customers={customers} setInvoices={setInvoices} deductStock={deductStock} handlePrint={handlePrint}/>}
         {tab==='saved'&&<SavedInvoicesTab invoices={invoices} setInvoices={setInvoices} handlePrint={handlePrint} products={products} customers={customers} deleteInvoiceFb={deleteInvoiceFb}/>}
         {tab==='projects'&&<ProjectsTab projects={projects} setProjects={setProjects} dbReady={dbReady}/>}
-        {tab==='settings'&&<SettingsTab adminPass={adminPass} setAdminPass={setAdminPass}/>}
+        {tab==='settings'&&<SettingsTab adminPass={adminPass} setAdminPass={setAdminPass} storeName={storeName} setStoreName={setStoreName} storeSubtitle={storeSubtitle} setStoreSubtitle={setStoreSubtitle}/>}
       </div></main>
 
       {/* MOBILE BOTTOM NAV */}
@@ -1909,7 +1927,7 @@ function ProjectsTab({projects,setProjects,dbReady}){
 /* ══════════════════════════════════════════════
    SETTINGS TAB
 ══════════════════════════════════════════════ */
-function SettingsTab({adminPass,setAdminPass}){
+function SettingsTab({adminPass,setAdminPass,storeName,setStoreName,storeSubtitle,setStoreSubtitle}){
   const[oldPw,setOldPw]=useState('');
   const[newPw,setNewPw]=useState('');
   const[confirmPw,setConfirmPw]=useState('');
