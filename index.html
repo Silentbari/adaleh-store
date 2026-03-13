@@ -661,6 +661,15 @@ function App(){
         setTimeout(()=>{skipSave.current=false;},200);
       });
 
+      // Listen projects
+      onSnapshot(collection(db,'projects'), snap=>{
+        if(snap.empty) return;
+        const data=snap.docs.map(d=>d.data());
+        skipSave.current=true;
+        setProjects(data);
+        setTimeout(()=>{skipSave.current=false;},200);
+      });
+
       // Load settings (password)
       window._fb.fbLoad('settings').then(rows=>{
         if(rows&&rows.length>0&&rows[0].adminPass){
@@ -707,6 +716,13 @@ function App(){
     const spVal=special.reduce((s,x)=>s+x.value,0);
     return prodVal+spVal;
   },[products,special]);
+
+  // Save projects to Firebase
+  useEffect(()=>{
+    if(!dbReady||skipSave.current)return;
+    const {fbSave}=window._fb;
+    projects.forEach(p=>fbSave('projects',p.id,p));
+  },[projects,dbReady]);
 
   function deductStock(lines){
     setProducts(prev=>prev.map(p=>{
@@ -863,6 +879,7 @@ function AdminApp({products,setProducts,customers,setCustomers,invoices,setInvoi
     {id:'customers',label:'العملاء',icon:'👥'},
     {id:'invoice',label:'فاتورة جديدة',icon:'🧾'},
     {id:'saved',label:'سجل الفواتير',icon:'📋'},
+    {id:'projects',label:'المشاريع',icon:'💼'},
     {id:'settings',label:'الإعدادات',icon:'⚙️'},
   ];
 
@@ -923,6 +940,7 @@ function AdminApp({products,setProducts,customers,setCustomers,invoices,setInvoi
         {tab==='customers'&&<CustomersTab customers={customers} setCustomers={setCustomers} deleteCustomer={deleteCustomer}/>}
         {tab==='invoice'&&<InvoiceTab products={products} setProducts={setProducts} customers={customers} setInvoices={setInvoices} deductStock={deductStock} handlePrint={handlePrint}/>}
         {tab==='saved'&&<SavedInvoicesTab invoices={invoices} setInvoices={setInvoices} handlePrint={handlePrint} products={products} customers={customers} deleteInvoiceFb={deleteInvoiceFb}/>}
+        {tab==='projects'&&<ProjectsTab projects={projects} setProjects={setProjects} dbReady={dbReady}/>}
         {tab==='settings'&&<SettingsTab adminPass={adminPass} setAdminPass={setAdminPass}/>}
       </div></main>
 
@@ -1562,6 +1580,325 @@ function SavedInvoicesTab({invoices,setInvoices,handlePrint,products,customers,d
               style={{flex:1,padding:11,background:'rgba(239,68,68,.18)',border:'1px solid rgba(239,68,68,.35)',borderRadius:11,color:'#f87171',fontWeight:900,fontSize:13}}>
               🗑️ حذف نهائياً
             </button>
+          </div>
+        </Modal>
+      )}
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════════
+   PROJECTS TAB — دفتر المشاريع والحسابات
+══════════════════════════════════════════════ */
+const PROJ_ICONS=['🏪','🏬','🏦','💰','🏗️','🚗','🏠','📱','🛒','💼','🌾','⚡','🎯','🔧','🍕','🌍'];
+const PROJ_COLORS=['#f59e0b','#3b82f6','#10b981','#8b5cf6','#ef4444','#06b6d4','#f97316','#ec4899','#14b8a6','#a855f7'];
+
+function genTxId(){ return 'tx_'+Math.random().toString(36).slice(2,9); }
+
+function ProjectsTab({projects,setProjects,dbReady}){
+  const[selProj,setSelProj]=useState(null); // selected project id
+  const[showAddProj,setShowAddProj]=useState(false);
+  const[showAddTx,setShowAddTx]=useState(null); // 'income'|'expense'
+  const[showEditProj,setShowEditProj]=useState(null);
+  const[monthFilter,setMonthFilter]=useState(''); // 'YYYY-MM'
+  const[delTxId,setDelTxId]=useState(null);
+
+  // New project form
+  const[npForm,setNpForm]=useState({name:'',icon:'💼',color:'#3b82f6'});
+  // New transaction form
+  const[txForm,setTxForm]=useState({amount:'',desc:'',date:todayStr()});
+
+  const proj=projects.find(p=>p.id===selProj);
+
+  // Delete from Firebase when project deleted
+  function deleteProjectFb(id){
+    setProjects(prev=>prev.filter(p=>p.id!==id));
+    if(dbReady&&window._fb){
+      const {db,doc}=window._fb;
+      import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js")
+        .then(({deleteDoc})=>deleteDoc(doc(db,'projects',id))).catch(()=>{});
+    }
+    if(selProj===id)setSelProj(null);
+  }
+
+  function addProject(){
+    if(!npForm.name.trim())return;
+    const newP={id:'proj_'+genId(),name:npForm.name.trim(),icon:npForm.icon,color:npForm.color,balance:0,transactions:[]};
+    setProjects(p=>[...p,newP]);
+    setNpForm({name:'',icon:'💼',color:'#3b82f6'});
+    setShowAddProj(false);
+  }
+
+  function addTransaction(type){
+    if(!txForm.amount||!txForm.desc.trim())return;
+    const amt=parseFloat(txForm.amount)||0;
+    const tx={id:genTxId(),type,amount:amt,desc:txForm.desc.trim(),date:txForm.date||todayStr()};
+    setProjects(prev=>prev.map(p=>{
+      if(p.id!==selProj)return p;
+      const newBal=type==='income'?p.balance+amt:p.balance-amt;
+      return{...p,balance:newBal,transactions:[tx,...(p.transactions||[])]};
+    }));
+    setTxForm({amount:'',desc:'',date:todayStr()});
+    setShowAddTx(null);
+  }
+
+  function deleteTx(txId){
+    setProjects(prev=>prev.map(p=>{
+      if(p.id!==selProj)return p;
+      const tx=p.transactions.find(t=>t.id===txId);
+      if(!tx)return p;
+      const newBal=tx.type==='income'?p.balance-tx.amount:p.balance+tx.amount;
+      return{...p,balance:newBal,transactions:p.transactions.filter(t=>t.id!==txId)};
+    }));
+    setDelTxId(null);
+  }
+
+  // Monthly report
+  const allMonths=proj?[...new Set((proj.transactions||[]).map(t=>t.date?.slice(0,7)).filter(Boolean))].sort().reverse():[];
+  const filteredTx=proj?(proj.transactions||[]).filter(t=>!monthFilter||t.date?.startsWith(monthFilter)):[];
+  const monthIncome=filteredTx.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0);
+  const monthExpense=filteredTx.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
+  const monthNet=monthIncome-monthExpense;
+
+  // All projects summary
+  const totalBalance=projects.reduce((s,p)=>s+p.balance,0);
+
+  // ── PROJECTS LIST (no project selected) ──
+  if(!selProj)return(
+    <div className='fade-up'>
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:20,flexWrap:'wrap',gap:10}}>
+        <div>
+          <h1 style={{fontSize:21,fontWeight:900,color:'#e2e8f0',marginBottom:3}}>المشاريع والحسابات 💼</h1>
+          <div style={{fontSize:12,color:'rgba(148,163,184,.5)'}}>
+            {fmt(projects.length)} مشروع | الرصيد الإجمالي: <strong style={{color:totalBalance>=0?'#34d399':'#f87171',direction:'ltr',display:'inline-block'}}>{fmtPrice(Math.abs(totalBalance))}</strong> أوق
+          </div>
+        </div>
+        <button className='btn' onClick={()=>setShowAddProj(true)}
+          style={{padding:'9px 16px',background:'linear-gradient(135deg,#3b82f6,#8b5cf6)',border:'none',borderRadius:11,color:'#fff',fontWeight:700,fontSize:13,boxShadow:'0 4px 12px rgba(59,130,246,.3)'}}>
+          ➕ مشروع جديد
+        </button>
+      </div>
+
+      {/* Summary cards */}
+      <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(160px,1fr))',gap:12,marginBottom:20}}>
+        {projects.map(p=>{
+          const inc=(p.transactions||[]).filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0);
+          const exp=(p.transactions||[]).filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
+          return(
+            <div key={p.id} className='card btn' onClick={()=>setSelProj(p.id)}
+              style={{padding:16,cursor:'pointer',border:`1px solid ${p.color}30`,transition:'all .2s'}}
+              onMouseEnter={e=>{e.currentTarget.style.borderColor=p.color+'66';e.currentTarget.style.transform='translateY(-3px)';}}
+              onMouseLeave={e=>{e.currentTarget.style.borderColor=p.color+'30';e.currentTarget.style.transform='translateY(0)';}}>
+              <div style={{display:'flex',alignItems:'center',gap:9,marginBottom:12}}>
+                <div style={{width:38,height:38,borderRadius:11,background:`${p.color}18`,border:`1px solid ${p.color}35`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:20}}>{p.icon}</div>
+                <div style={{fontWeight:800,color:'#e2e8f0',fontSize:13,flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{p.name}</div>
+              </div>
+              <div style={{fontSize:18,fontWeight:900,color:p.balance>=0?'#34d399':'#f87171',direction:'ltr',marginBottom:8}}>{p.balance>=0?'':'-'}{fmtPrice(Math.abs(p.balance))}</div>
+              <div style={{display:'flex',justifyContent:'space-between',fontSize:10,color:'rgba(148,163,184,.5)'}}>
+                <span style={{color:'#34d399'}}>↑ {fmtPrice(inc)}</span>
+                <span style={{color:'#f87171'}}>↓ {fmtPrice(exp)}</span>
+              </div>
+              <div style={{marginTop:10,fontSize:11,color:p.color,fontWeight:600,opacity:.7}}>اضغط للتفاصيل ←</div>
+            </div>
+          );
+        })}
+      </div>
+
+      {projects.length===0&&(
+        <div style={{textAlign:'center',padding:'80px 0',color:'rgba(148,163,184,.3)'}}>
+          <div style={{fontSize:52,marginBottom:12}}>💼</div>
+          <div style={{fontSize:16,fontWeight:700}}>لا توجد مشاريع بعد</div>
+          <div style={{fontSize:12,marginTop:5}}>اضغط "مشروع جديد" للبدء</div>
+        </div>
+      )}
+
+      {/* Add Project Modal */}
+      {showAddProj&&(
+        <Modal onClose={()=>setShowAddProj(false)} title='➕ مشروع جديد' maxW={400}>
+          <div style={{display:'flex',flexDirection:'column',gap:12}}>
+            <div>
+              <Lbl>اسم المشروع *</Lbl>
+              <input className='inp' placeholder='مثال: دبو القديمة' value={npForm.name} onChange={e=>setNpForm(p=>({...p,name:e.target.value}))}/>
+            </div>
+            <div>
+              <Lbl>الأيقونة</Lbl>
+              <div style={{display:'flex',flexWrap:'wrap',gap:6}}>
+                {PROJ_ICONS.map(ic=>(
+                  <button key={ic} className='btn' onClick={()=>setNpForm(p=>({...p,icon:ic}))}
+                    style={{width:36,height:36,borderRadius:9,fontSize:18,border:npForm.icon===ic?'2px solid #63b3ed':'1px solid rgba(255,255,255,.1)',background:npForm.icon===ic?'rgba(99,179,237,.15)':'rgba(255,255,255,.04)'}}>
+                    {ic}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <Lbl>اللون</Lbl>
+              <div style={{display:'flex',flexWrap:'wrap',gap:6}}>
+                {PROJ_COLORS.map(c=>(
+                  <button key={c} className='btn' onClick={()=>setNpForm(p=>({...p,color:c}))}
+                    style={{width:28,height:28,borderRadius:'50%',background:c,border:npForm.color===c?'3px solid #fff':'2px solid transparent',boxShadow:npForm.color===c?`0 0 8px ${c}`:'none'}}>
+                  </button>
+                ))}
+              </div>
+            </div>
+            <button className='btn' onClick={addProject} disabled={!npForm.name.trim()}
+              style={{padding:12,background:npForm.name.trim()?'linear-gradient(135deg,#3b82f6,#8b5cf6)':'rgba(255,255,255,.05)',border:'none',borderRadius:11,color:npForm.name.trim()?'#fff':'rgba(148,163,184,.3)',fontWeight:900,fontSize:14}}>
+              ✅ إضافة المشروع
+            </button>
+          </div>
+        </Modal>
+      )}
+    </div>
+  );
+
+  // ── PROJECT DETAIL ──
+  return(
+    <div className='fade-up'>
+      {/* Header */}
+      <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:18,flexWrap:'wrap'}}>
+        <button className='btn' onClick={()=>setSelProj(null)}
+          style={{padding:'7px 13px',background:'rgba(255,255,255,.07)',border:'1px solid rgba(255,255,255,.1)',borderRadius:9,color:'#94a3b8',fontSize:13,fontWeight:600}}>← رجوع</button>
+        <div style={{width:36,height:36,borderRadius:11,background:`${proj.color}18`,border:`1px solid ${proj.color}35`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:20}}>{proj.icon}</div>
+        <h1 style={{fontSize:19,fontWeight:900,color:'#e2e8f0'}}>{proj.name}</h1>
+        <button className='btn' onClick={()=>deleteProjectFb(proj.id)}
+          style={{marginRight:'auto',padding:'5px 10px',background:'rgba(239,68,68,.1)',border:'1px solid rgba(239,68,68,.2)',borderRadius:8,color:'#f87171',fontSize:11,fontWeight:700}}>🗑️ حذف</button>
+      </div>
+
+      {/* Balance + actions */}
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:10,marginBottom:16}}>
+        <div className='card' style={{padding:14,textAlign:'center',border:`1px solid ${proj.color}30`}}>
+          <div style={{fontSize:11,color:'rgba(148,163,184,.5)',marginBottom:4}}>💰 الرصيد الحالي</div>
+          <div style={{fontSize:20,fontWeight:900,color:proj.balance>=0?'#34d399':'#f87171',direction:'ltr'}}>{proj.balance>=0?'':'-'}{fmtPrice(Math.abs(proj.balance))}</div>
+          <div style={{fontSize:10,color:'rgba(148,163,184,.4)'}}>أوقية</div>
+        </div>
+        <div className='card' style={{padding:14,textAlign:'center'}}>
+          <div style={{fontSize:11,color:'rgba(148,163,184,.5)',marginBottom:4}}>📈 إجمالي الدخل</div>
+          <div style={{fontSize:16,fontWeight:900,color:'#34d399',direction:'ltr'}}>{fmtPrice((proj.transactions||[]).filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0))}</div>
+          <div style={{fontSize:10,color:'rgba(148,163,184,.4)'}}>أوقية</div>
+        </div>
+        <div className='card' style={{padding:14,textAlign:'center'}}>
+          <div style={{fontSize:11,color:'rgba(148,163,184,.5)',marginBottom:4}}>📉 إجمالي المصاريف</div>
+          <div style={{fontSize:16,fontWeight:900,color:'#f87171',direction:'ltr'}}>{fmtPrice((proj.transactions||[]).filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0))}</div>
+          <div style={{fontSize:10,color:'rgba(148,163,184,.4)'}}>أوقية</div>
+        </div>
+      </div>
+
+      {/* Add income/expense buttons */}
+      <div style={{display:'flex',gap:9,marginBottom:16}}>
+        <button className='btn' onClick={()=>{setShowAddTx('income');setTxForm({amount:'',desc:'',date:todayStr()});}}
+          style={{flex:1,padding:11,background:'rgba(52,211,153,.12)',border:'1px solid rgba(52,211,153,.25)',borderRadius:11,color:'#34d399',fontWeight:900,fontSize:13}}>
+          ➕ إضافة دخل
+        </button>
+        <button className='btn' onClick={()=>{setShowAddTx('expense');setTxForm({amount:'',desc:'',date:todayStr()});}}
+          style={{flex:1,padding:11,background:'rgba(239,68,68,.1)',border:'1px solid rgba(239,68,68,.22)',borderRadius:11,color:'#f87171',fontWeight:900,fontSize:13}}>
+          ➖ إضافة مصروف
+        </button>
+      </div>
+
+      {/* Month filter */}
+      <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:14,flexWrap:'wrap'}}>
+        <div style={{fontSize:12,fontWeight:700,color:'rgba(148,163,184,.6)'}}>📅 تصفية حسب الشهر:</div>
+        <div style={{display:'flex',gap:5,flexWrap:'wrap'}}>
+          <button className='btn' onClick={()=>setMonthFilter('')}
+            style={{padding:'4px 10px',borderRadius:7,fontSize:11,fontWeight:700,border:!monthFilter?'1px solid #63b3ed':'1px solid rgba(255,255,255,.1)',background:!monthFilter?'rgba(99,179,237,.15)':'rgba(255,255,255,.04)',color:!monthFilter?'#63b3ed':'rgba(148,163,184,.6)'}}>الكل</button>
+          {allMonths.map(m=>(
+            <button key={m} className='btn' onClick={()=>setMonthFilter(m)}
+              style={{padding:'4px 10px',borderRadius:7,fontSize:11,fontWeight:700,border:monthFilter===m?'1px solid #63b3ed':'1px solid rgba(255,255,255,.1)',background:monthFilter===m?'rgba(99,179,237,.15)':'rgba(255,255,255,.04)',color:monthFilter===m?'#63b3ed':'rgba(148,163,184,.6)',direction:'ltr'}}>
+              {m}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Monthly summary if filtered */}
+      {monthFilter&&(
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:9,marginBottom:14}}>
+          <div style={{padding:'10px 12px',borderRadius:10,background:'rgba(52,211,153,.07)',border:'1px solid rgba(52,211,153,.18)',textAlign:'center'}}>
+            <div style={{fontSize:10,color:'rgba(148,163,184,.5)',marginBottom:3}}>دخل الشهر</div>
+            <div style={{fontSize:14,fontWeight:900,color:'#34d399',direction:'ltr'}}>{fmtPrice(monthIncome)}</div>
+          </div>
+          <div style={{padding:'10px 12px',borderRadius:10,background:'rgba(239,68,68,.07)',border:'1px solid rgba(239,68,68,.18)',textAlign:'center'}}>
+            <div style={{fontSize:10,color:'rgba(148,163,184,.5)',marginBottom:3}}>مصاريف الشهر</div>
+            <div style={{fontSize:14,fontWeight:900,color:'#f87171',direction:'ltr'}}>{fmtPrice(monthExpense)}</div>
+          </div>
+          <div style={{padding:'10px 12px',borderRadius:10,background:monthNet>=0?'rgba(52,211,153,.07)':'rgba(239,68,68,.07)',border:`1px solid ${monthNet>=0?'rgba(52,211,153,.18)':'rgba(239,68,68,.18)'}`,textAlign:'center'}}>
+            <div style={{fontSize:10,color:'rgba(148,163,184,.5)',marginBottom:3}}>صافي الشهر</div>
+            <div style={{fontSize:14,fontWeight:900,color:monthNet>=0?'#34d399':'#f87171',direction:'ltr'}}>{monthNet>=0?'':'-'}{fmtPrice(Math.abs(monthNet))}</div>
+          </div>
+        </div>
+      )}
+
+      {/* Transactions list */}
+      <div className='card' style={{padding:14}}>
+        <div style={{fontSize:13,fontWeight:700,color:'#e2e8f0',marginBottom:11}}>
+          سجل العمليات {monthFilter?`(${monthFilter})`:''} ({fmt(filteredTx.length)})
+        </div>
+        {filteredTx.length===0?(
+          <div style={{textAlign:'center',padding:'40px 0',color:'rgba(148,163,184,.3)'}}>
+            <div style={{fontSize:34,marginBottom:8}}>📋</div>
+            <div style={{fontSize:13,fontWeight:700}}>لا توجد عمليات</div>
+          </div>
+        ):(
+          <div style={{display:'flex',flexDirection:'column',gap:6}}>
+            {filteredTx.map(tx=>(
+              <div key={tx.id} style={{display:'flex',alignItems:'center',gap:10,padding:'9px 12px',borderRadius:10,background:'rgba(255,255,255,.03)',border:`1px solid ${tx.type==='income'?'rgba(52,211,153,.12)':'rgba(239,68,68,.12)'}`}}>
+                <div style={{width:32,height:32,borderRadius:9,background:tx.type==='income'?'rgba(52,211,153,.12)':'rgba(239,68,68,.1)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:16,flexShrink:0}}>
+                  {tx.type==='income'?'📈':'📉'}
+                </div>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{fontWeight:600,color:'#e2e8f0',fontSize:13,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{tx.desc}</div>
+                  <div style={{fontSize:10,color:'rgba(148,163,184,.45)',direction:'ltr',display:'inline-block'}}>{tx.date}</div>
+                </div>
+                <div style={{fontWeight:900,fontSize:14,color:tx.type==='income'?'#34d399':'#f87171',direction:'ltr',whiteSpace:'nowrap'}}>
+                  {tx.type==='income'?'+':'-'}{fmtPrice(tx.amount)}
+                </div>
+                <button className='btn' onClick={()=>setDelTxId(tx.id)}
+                  style={{width:24,height:24,borderRadius:7,background:'rgba(239,68,68,.08)',border:'1px solid rgba(239,68,68,.15)',color:'#f87171',fontSize:11,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>✕</button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Add Transaction Modal */}
+      {showAddTx&&(
+        <Modal onClose={()=>setShowAddTx(null)} title={showAddTx==='income'?'➕ إضافة دخل':'➖ إضافة مصروف'} maxW={380}>
+          <div style={{display:'flex',flexDirection:'column',gap:11}}>
+            <div>
+              <Lbl>المبلغ (أوقية) *</Lbl>
+              <input className='inp' inputMode='numeric' placeholder='0' value={txForm.amount}
+                onChange={e=>setTxForm(p=>({...p,amount:e.target.value}))} style={{direction:'ltr',textAlign:'center',fontSize:18,fontWeight:700}}/>
+            </div>
+            <div>
+              <Lbl>الوصف *</Lbl>
+              <input className='inp' placeholder={showAddTx==='income'?'مثال: إيجار شهر مارس':'مثال: فاتورة كهرباء'} value={txForm.desc}
+                onChange={e=>setTxForm(p=>({...p,desc:e.target.value}))}/>
+            </div>
+            <div>
+              <Lbl>التاريخ</Lbl>
+              <input className='inp' type='date' value={txForm.date} onChange={e=>setTxForm(p=>({...p,date:e.target.value}))} style={{direction:'ltr'}}/>
+            </div>
+            <button className='btn' onClick={()=>addTransaction(showAddTx)}
+              disabled={!txForm.amount||!txForm.desc.trim()}
+              style={{padding:12,background:(!txForm.amount||!txForm.desc.trim())?'rgba(255,255,255,.05)':showAddTx==='income'?'linear-gradient(135deg,#059669,#10b981)':'linear-gradient(135deg,#dc2626,#ef4444)',border:'none',borderRadius:11,color:(!txForm.amount||!txForm.desc.trim())?'rgba(148,163,184,.3)':'#fff',fontWeight:900,fontSize:14}}>
+              {showAddTx==='income'?'✅ إضافة الدخل':'✅ إضافة المصروف'}
+            </button>
+          </div>
+        </Modal>
+      )}
+
+      {/* Delete Transaction Confirm */}
+      {delTxId&&(
+        <Modal onClose={()=>setDelTxId(null)} title='حذف العملية' maxW={320}>
+          <div style={{textAlign:'center',padding:'10px 0 18px'}}>
+            <div style={{fontSize:40,marginBottom:8}}>⚠️</div>
+            <div style={{fontSize:13,color:'rgba(148,163,184,.7)'}}>سيتم حذف هذه العملية وتعديل الرصيد</div>
+          </div>
+          <div style={{display:'flex',gap:9}}>
+            <button className='btn' onClick={()=>setDelTxId(null)}
+              style={{flex:1,padding:10,background:'rgba(255,255,255,.06)',border:'1px solid rgba(255,255,255,.1)',borderRadius:10,color:'#94a3b8',fontWeight:700}}>إلغاء</button>
+            <button className='btn' onClick={()=>deleteTx(delTxId)}
+              style={{flex:1,padding:10,background:'rgba(239,68,68,.18)',border:'1px solid rgba(239,68,68,.35)',borderRadius:10,color:'#f87171',fontWeight:900}}>🗑️ حذف</button>
           </div>
         </Modal>
       )}
