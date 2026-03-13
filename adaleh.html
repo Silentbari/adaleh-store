@@ -1,0 +1,2488 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>محل العدالة - النظام الشامل</title>
+<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;900&display=swap" rel="stylesheet"/>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;background:#060a14}
+body{font-family:'Cairo',sans-serif;color:#e8eaf0;overflow-x:hidden}
+::-webkit-scrollbar{width:5px}
+::-webkit-scrollbar-track{background:#0d1220}
+::-webkit-scrollbar-thumb{background:#2a3a6e;border-radius:4px}
+input,select,textarea,button{font-family:'Cairo',sans-serif}
+input::placeholder,textarea::placeholder{color:rgba(150,170,220,0.35)}
+input:focus,select:focus,textarea:focus{outline:none}
+.btn{cursor:pointer;transition:all .18s ease}
+.btn:hover{filter:brightness(1.12)}
+.btn:active{transform:scale(.96)}
+.inp{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:11px;color:#e8eaf0;padding:10px 14px;width:100%;font-size:14px;transition:border .2s}
+.inp:focus{border-color:#63b3ed;background:rgba(99,179,237,.07)}
+.card{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);border-radius:16px}
+.nav-link{padding:9px 14px;border-radius:10px;cursor:pointer;transition:all .18s;font-size:13px;font-weight:600;display:flex;align-items:center;gap:7px;border:none;background:transparent;color:rgba(148,163,184,.7);font-family:'Cairo',sans-serif;width:100%}
+.nav-link:hover{background:rgba(255,255,255,.06);color:#e2e8f0}
+.nav-link.active{background:rgba(99,179,237,.15);color:#63b3ed;border:1px solid rgba(99,179,237,.25)}
+.tag{border-radius:50px;padding:2px 10px;font-size:11px;font-weight:700;display:inline-flex;align-items:center;gap:3px}
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.fade-up{animation:fadeUp .25s ease forwards}
+@keyframes popIn{0%{transform:scale(.85);opacity:0}70%{transform:scale(1.03)}100%{transform:scale(1);opacity:1}}
+.pop-in{animation:popIn .22s ease forwards}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.pulse{animation:pulse 1.8s infinite}
+@keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-5px)}75%{transform:translateX(5px)}}
+.shake{animation:shake .35s ease}
+@page{margin:1cm 1cm 0cm 1cm}
+
+/* ═══════════ MOBILE RESPONSIVE ═══════════ */
+:root{ --mob: 0 }
+@media(max-width:700px){
+  /* Hide less important table columns on mobile */
+  .tbl-hide-mob{ display:none!important }
+  /* Make tables scrollable */
+  .tbl-wrap{ overflow-x:auto; -webkit-overflow-scrolling:touch }
+  /* Tighter modal padding */
+  .modal-inner{ padding:16px!important; border-radius:16px!important }
+
+  :root{ --mob: 1 }
+  .mob-hide{ display:none!important }
+  .mob-col{ flex-direction:column!important }
+  .mob-full{ width:100%!important; min-width:0!important }
+  .mob-p{ padding:14px 12px!important }
+  .mob-grid1{ grid-template-columns:1fr!important }
+  .mob-grid2{ grid-template-columns:1fr 1fr!important }
+  .mob-fs12{ font-size:12px!important }
+  .mob-fs11{ font-size:11px!important }
+
+  /* Bottom nav bar replaces sidebar */
+  .sidebar-desktop{ display:none!important }
+  .bottom-nav{ display:flex!important }
+
+  /* Main content full width with bottom padding for nav */
+  .admin-main{ padding:14px 12px 80px!important }
+
+  /* Invoice grid → stack */
+  .inv-grid{ grid-template-columns:1fr!important }
+
+  /* Cards tighter on mobile */
+  .card{ border-radius:13px!important }
+}
+@media(min-width:701px){
+  .bottom-nav{ display:none!important }
+  .sidebar-desktop{ display:flex!important }
+}
+
+@media print{
+  .no-print{display:none!important}
+  body *{visibility:hidden}
+  #print-zone,#print-zone *{visibility:visible}
+  #print-zone{position:fixed;inset:0;background:#fff;z-index:99999;padding:40px}
+}
+</style>
+<script type="module">
+/* ══════════════ FIREBASE SETUP ══════════════ */
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getFirestore, doc, getDoc, setDoc, onSnapshot, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDLCaF77SHZStVoZGxMsq2cPtTzf2EfuH8",
+  authDomain: "adalah-1.firebaseapp.com",
+  projectId: "adalah-1",
+  storageBucket: "adalah-1.firebasestorage.app",
+  messagingSenderId: "602486239754",
+  appId: "1:602486239754:web:53d0e24c6d049ffa89e5f3"
+};
+
+const fbApp = initializeApp(firebaseConfig);
+const db   = getFirestore(fbApp);
+
+// ── helpers ──────────────────────────────────
+async function fbSave(colName, id, data){
+  try{ await setDoc(doc(db, colName, id), data); }
+  catch(e){ console.error('fbSave',e); }
+}
+async function fbLoad(colName){
+  try{
+    const snap = await getDocs(collection(db, colName));
+    return snap.docs.map(d=>d.data());
+  }catch(e){ console.error('fbLoad',e); return null; }
+}
+
+// ── expose to window so Babel script can use ─
+window._fb = { db, doc, setDoc, onSnapshot, collection, getDocs, fbSave, fbLoad };
+window._fbReady = true;
+window.dispatchEvent(new Event('fbReady'));
+</script>
+</head>
+<body>
+<div id="root"></div>
+<div id="modal-root" style="position:relative;z-index:99999"></div>
+<div id="print-zone" style="display:none"></div>
+
+<script type="text/babel">
+const {useState,useMemo,useRef,useEffect}=React;
+function useIsMobile(){ 
+  const[mob,setMob]=useState(()=>window.innerWidth<=700);
+  useEffect(()=>{
+    const fn=()=>setMob(window.innerWidth<=700);
+    window.addEventListener('resize',fn);
+    return()=>window.removeEventListener('resize',fn);
+  },[]);
+  return mob;
+}
+
+/* ══════════════════════════════════════════════
+   HELPERS
+══════════════════════════════════════════════ */
+// Force English (Western) numerals
+const fmt = n => Number(n).toLocaleString('en-US');
+const fmtPrice = n => fmt(Math.round(Number(n)));
+const todayStr = () => new Date().toLocaleDateString('en-GB',{year:'numeric',month:'short',day:'numeric'});
+const genId = () => Date.now().toString(36)+Math.random().toString(36).slice(2,5);
+const makeInvNum = () => 'INV-'+String(Math.floor(Math.random()*9000)+1000);
+
+const CATEGORIES=["هواتف ذكية","هواتف عادية","أجهزة لوحية","شواحن","كابلات","باوربانك","سماعات وكوتير","أجهزة صوتية","اكسسوارات","أخرى"];
+const CAT_COLORS={"هواتف ذكية":"#818cf8","هواتف عادية":"#60a5fa","أجهزة لوحية":"#34d399","شواحن":"#fb923c","كابلات":"#facc15","باوربانك":"#a78bfa","سماعات وكوتير":"#f472b6","أجهزة صوتية":"#38bdf8","اكسسوارات":"#4ade80","أخرى":"#94a3b8"};
+const CAT_ICONS={"هواتف ذكية":"📱","هواتف عادية":"📞","أجهزة لوحية":"💻","شواحن":"⚡","كابلات":"🔌","باوربانك":"🔋","سماعات وكوتير":"🎧","أجهزة صوتية":"🔊","اكسسوارات":"🛡️","أخرى":"📦"};
+const AVATARS=["👤","👨","👩","🧔","👱","👴","👵","🧑","🧑‍💼","👨‍💼","👩‍💼","🧑‍🔧","👨‍🔧","🤵","👮","🧕","🤴","👸","🦸","🤖"];
+const CUST_COLORS=["#63b3ed","#f472b6","#34d399","#fb923c","#a78bfa","#facc15","#38bdf8","#4ade80","#f87171","#e879f9"];
+
+function getEmoji(p){
+  const n=((p.name||"")+" "+(p.category||"")).toLowerCase();
+  if(n.includes("ايفون")||n.includes("iphone")||n.includes("xr"))return"📱";
+  if(n.includes("نوكيا")||n.includes("nokia")||n.includes("itel"))return"📞";
+  if(n.includes("tablet")||n.includes("تابلت"))return"💻";
+  if(n.includes("شاحن"))return"⚡";
+  if(n.includes("كابل")||n.includes("كبل")||n.includes("otg"))return"🔌";
+  if(n.includes("باوربانك")||n.includes("باور"))return"🔋";
+  if(n.includes("كوتير")||n.includes("كاسك")||n.includes("سماعة"))return"🎧";
+  if(n.includes("باف")||n.includes("رنغلايت")||n.includes("توندست")||n.includes("mp3"))return"🔊";
+  if(n.includes("كادر")||n.includes("وقاته")||n.includes("بوشت")||n.includes("كرت"))return"🛡️";
+  if(n.includes("درون"))return"🚁";
+  if(n.includes("كامرة"))return"📷";
+  return"📦";
+}
+
+/* ══════════════════════════════════════════════
+   INITIAL DATA
+══════════════════════════════════════════════ */
+const INIT_PRODUCTS=[
+  {id:'p001',name:'YGA82 باف',qty:2,price:160,category:'أجهزة صوتية',lowStock:2},
+  {id:'p002',name:'XR-128 مستعملة',qty:2,price:6400,category:'هواتف ذكية',lowStock:2},
+  {id:'p003',name:'XR 64 ايفون',qty:2,price:6000,category:'هواتف ذكية',lowStock:2},
+  {id:'p004',name:'XN 2366 باف',qty:4,price:190,category:'أجهزة صوتية',lowStock:5},
+  {id:'p005',name:'x 511 باف',qty:12,price:145,category:'أجهزة صوتية',lowStock:10},
+  {id:'p006',name:'W 591 باف',qty:7,price:210,category:'أجهزة صوتية',lowStock:5},
+  {id:'p007',name:'VIERN شاحن',qty:1,price:100,category:'شواحن',lowStock:2},
+  {id:'p008',name:'V380 كامرة',qty:3,price:580,category:'أخرى',lowStock:3},
+  {id:'p009',name:'v3 شاحن الصادق',qty:5,price:48,category:'شواحن',lowStock:5},
+  {id:'p010',name:'V21 كوتير بلو كاسك',qty:13,price:210,category:'سماعات وكوتير',lowStock:10},
+  {id:'p011',name:'V2 كوتير',qty:3,price:220,category:'سماعات وكوتير',lowStock:3},
+  {id:'p012',name:'USB S8 TDKC كابل',qty:101,price:21,category:'كابلات',lowStock:20},
+  {id:'p013',name:'UIRC 20 L شاحن',qty:1,price:85,category:'شواحن',lowStock:2},
+  {id:'p014',name:'TEKA 503',qty:5,price:80,category:'أخرى',lowStock:5},
+  {id:'p015',name:'TDN كابل',qty:2,price:30,category:'كابلات',lowStock:2},
+  {id:'p016',name:'TDN شاحن',qty:1,price:120,category:'شواحن',lowStock:2},
+  {id:'p017',name:'TDN 45 كابل',qty:101,price:40,category:'كابلات',lowStock:20},
+  {id:'p018',name:'TDKC USB كابل ايفون',qty:1500,price:21,category:'هواتف ذكية',lowStock:100},
+  {id:'p019',name:'TDKC USB كابل',qty:1834,price:21,category:'كابلات',lowStock:100},
+  {id:'p020',name:'TDK S8 -S6',qty:139,price:75,category:'أخرى',lowStock:20},
+  {id:'p021',name:'TDK S6 شاحن',qty:1,price:65,category:'شواحن',lowStock:2},
+  {id:'p022',name:'TDK كابل عادي',qty:82,price:25,category:'كابلات',lowStock:20},
+  {id:'p023',name:'TDK كابل تايبسي',qty:510,price:32,category:'كابلات',lowStock:50},
+  {id:'p024',name:'TDK 35W شاحن',qty:143,price:105,category:'شواحن',lowStock:20},
+  {id:'p025',name:'TDK 313 S8 كابل يو اس بي',qty:4,price:21,category:'كابلات',lowStock:5},
+  {id:'p026',name:'TDK 313 كابل',qty:38,price:32,category:'كابلات',lowStock:10},
+  {id:'p027',name:'TDK 313 شاحن',qty:149,price:177,category:'شواحن',lowStock:20},
+  {id:'p028',name:'TDK 313 6A كابل',qty:125,price:21,category:'كابلات',lowStock:20},
+  {id:'p029',name:'TDK 120 شاحن',qty:1,price:120,category:'شواحن',lowStock:2},
+  {id:'p030',name:'TAK RA فلكس',qty:32,price:45,category:'أخرى',lowStock:10},
+  {id:'p031',name:'TABLET ZW 706',qty:1,price:900,category:'أجهزة لوحية',lowStock:2},
+  {id:'p032',name:'TABLET M28',qty:1,price:3250,category:'أجهزة لوحية',lowStock:2},
+  {id:'p033',name:'TABLET M12',qty:3,price:1610,category:'أجهزة لوحية',lowStock:3},
+  {id:'p034',name:'TABLET M 791',qty:2,price:1610,category:'أجهزة لوحية',lowStock:2},
+  {id:'p035',name:'TABLET B1000',qty:3,price:1250,category:'أجهزة لوحية',lowStock:3},
+  {id:'p036',name:'TABLET A02',qty:1,price:950,category:'أجهزة لوحية',lowStock:2},
+  {id:'p037',name:'TA 5100 باف',qty:2,price:800,category:'أجهزة صوتية',lowStock:2},
+  {id:'p038',name:'TA 120 باف',qty:76,price:140,category:'أجهزة صوتية',lowStock:20},
+  {id:'p039',name:'T805 كوتير',qty:96,price:130,category:'سماعات وكوتير',lowStock:20},
+  {id:'p040',name:'T800 PRO  وقاته',qty:73,price:120,category:'اكسسوارات',lowStock:20},
+  {id:'p041',name:'T800 وقاته',qty:100,price:120,category:'اكسسوارات',lowStock:20},
+  {id:'p042',name:'T800 سماعة',qty:28,price:120,category:'سماعات وكوتير',lowStock:10},
+  {id:'p043',name:'T315',qty:1,price:530,category:'أخرى',lowStock:2},
+  {id:'p044',name:'T10 NI كوتير',qty:100,price:170,category:'سماعات وكوتير',lowStock:20},
+  {id:'p045',name:'SELL19 وقاتة',qty:5,price:350,category:'اكسسوارات',lowStock:5},
+  {id:'p046',name:'S9 PRO  وقاته',qty:1,price:450,category:'اكسسوارات',lowStock:2},
+  {id:'p047',name:'S8 كابل عادي ايفون',qty:120,price:22,category:'هواتف ذكية',lowStock:20},
+  {id:'p048',name:'S8 كابل عادي',qty:42,price:22,category:'كابلات',lowStock:10},
+  {id:'p049',name:'S8 شاحن بافين',qty:13,price:110,category:'شواحن',lowStock:10},
+  {id:'p050',name:'S8 شاحن اوريمو  اصلي',qty:118,price:58,category:'شواحن',lowStock:20},
+  {id:'p051',name:'S8 شاحن اورايمو عادي كبير',qty:324,price:41,category:'شواحن',lowStock:50},
+  {id:'p052',name:'S24 باف',qty:1,price:180,category:'أجهزة صوتية',lowStock:2},
+  {id:'p053',name:'S17 تلفون',qty:1,price:240,category:'هواتف ذكية',lowStock:2},
+  {id:'p054',name:'S1411 توندست',qty:1,price:250,category:'أجهزة صوتية',lowStock:2},
+  {id:'p055',name:'S1360 باف',qty:4,price:110,category:'أجهزة صوتية',lowStock:5},
+  {id:'p056',name:'S023 باف',qty:12,price:170,category:'أجهزة صوتية',lowStock:10},
+  {id:'p057',name:'RS A149 برو',qty:8,price:250,category:'أخرى',lowStock:5},
+  {id:'p058',name:'RS شاحن',qty:1,price:80,category:'شواحن',lowStock:2},
+  {id:'p059',name:'RIM 777 شاحن',qty:811,price:36,category:'شواحن',lowStock:50},
+  {id:'p060',name:'RGS شاحن  P72',qty:1,price:45,category:'شواحن',lowStock:2},
+  {id:'p061',name:'RGB شاحن',qty:19,price:54,category:'شواحن',lowStock:10},
+  {id:'p062',name:'RG600 درون',qty:1,price:200,category:'أخرى',lowStock:2},
+  {id:'p063',name:'RFS 260 باف',qty:8,price:300,category:'أجهزة صوتية',lowStock:5},
+  {id:'p064',name:'REDMI كوتير',qty:1,price:220,category:'سماعات وكوتير',lowStock:2},
+  {id:'p065',name:'R21 رنغلايت',qty:71,price:338,category:'أجهزة صوتية',lowStock:20},
+  {id:'p066',name:'R14 رنغلايت',qty:73,price:300,category:'أجهزة صوتية',lowStock:20},
+  {id:'p067',name:'R120 MAMAK شاحن',qty:150,price:98,category:'شواحن',lowStock:20},
+  {id:'p068',name:'R03 كوتير بلوتوث اورايمو',qty:6,price:150,category:'سماعات وكوتير',lowStock:5},
+  {id:'p069',name:'R A5 128',qty:1,price:3300,category:'هواتف ذكية',lowStock:2},
+  {id:'p070',name:'R A17',qty:2,price:5600,category:'هواتف ذكية',lowStock:2},
+  {id:'p071',name:'R 328',qty:2,price:650,category:'أخرى',lowStock:2},
+  {id:'p072',name:'R 152 128',qty:1,price:4550,category:'هواتف ذكية',lowStock:2},
+  {id:'p073',name:'R 10 5G',qty:1,price:4850,category:'هواتف ذكية',lowStock:2},
+  {id:'p074',name:'PRO ZE RO X18',qty:2,price:250,category:'أخرى',lowStock:2},
+  {id:'p075',name:'PRO TM 04',qty:4,price:250,category:'أخرى',lowStock:5},
+  {id:'p076',name:'PRO T8  كوتير',qty:1,price:250,category:'سماعات وكوتير',lowStock:2},
+  {id:'p077',name:'PRO T8',qty:2,price:250,category:'أخرى',lowStock:2},
+  {id:'p078',name:'PRO S8',qty:220,price:110,category:'أخرى',lowStock:50},
+  {id:'p079',name:'PRO M88',qty:21,price:180,category:'أخرى',lowStock:10},
+  {id:'p080',name:'PRO M10',qty:40,price:18,category:'أخرى',lowStock:10},
+  {id:'p081',name:'PRO LOS',qty:167,price:190,category:'أخرى',lowStock:20},
+  {id:'p082',name:'PRO K6',qty:10,price:195,category:'أخرى',lowStock:5},
+  {id:'p083',name:'PRO I 12',qty:1,price:50,category:'أخرى',lowStock:2},
+  {id:'p084',name:'PRO G10 MIN',qty:58,price:175,category:'أخرى',lowStock:20},
+  {id:'p085',name:'PRO 8S بلوتوث',qty:300,price:110,category:'أخرى',lowStock:50},
+  {id:'p086',name:'PRO 8',qty:5,price:110,category:'أخرى',lowStock:5},
+  {id:'p087',name:'PRO 6S بلوتوث',qty:200,price:110,category:'أخرى',lowStock:20},
+  {id:'p088',name:'PRO 5 كوتير',qty:29,price:75,category:'سماعات وكوتير',lowStock:10},
+  {id:'p089',name:'PRO 5',qty:1,price:70,category:'أخرى',lowStock:2},
+  {id:'p090',name:'PRO 2961',qty:1,price:130,category:'أخرى',lowStock:2},
+  {id:'p091',name:'PD بركت',qty:88,price:35,category:'أخرى',lowStock:20},
+  {id:'p092',name:'P9 كوتير كام',qty:2,price:65,category:'سماعات وكوتير',lowStock:2},
+  {id:'p093',name:'P9 كوتير',qty:3,price:65,category:'سماعات وكوتير',lowStock:3},
+  {id:'p094',name:'P9 كاسك',qty:183,price:65,category:'سماعات وكوتير',lowStock:20},
+  {id:'p095',name:'P722 A4 شاحن',qty:15,price:45,category:'شواحن',lowStock:10},
+  {id:'p096',name:'P72 شاحن ركلسي',qty:72,price:46,category:'شواحن',lowStock:20},
+  {id:'p097',name:'P520 باف',qty:1,price:160,category:'أجهزة صوتية',lowStock:2},
+  {id:'p098',name:'P47 كاسك',qty:493,price:55,category:'سماعات وكوتير',lowStock:50},
+  {id:'p099',name:'P36 باف',qty:54,price:340,category:'أجهزة صوتية',lowStock:20},
+  {id:'p100',name:'P331 باف',qty:2,price:180,category:'أجهزة صوتية',lowStock:2},
+  {id:'p101',name:'P2961 كوتير كام',qty:14,price:130,category:'سماعات وكوتير',lowStock:10},
+  {id:'p102',name:'OXMAX 80000',qty:10,price:713,category:'أخرى',lowStock:5},
+  {id:'p103',name:'OTG',qty:130,price:18,category:'كابلات',lowStock:20},
+  {id:'p104',name:'NV 9026 باف',qty:2,price:210,category:'أجهزة صوتية',lowStock:2},
+  {id:'p105',name:'NRT 313 كابل',qty:80,price:18,category:'كابلات',lowStock:20},
+  {id:'p106',name:'NRS شاحن',qty:14,price:40,category:'شواحن',lowStock:10},
+  {id:'p107',name:'NOKIA 5310',qty:13,price:360,category:'هواتف عادية',lowStock:10},
+  {id:'p108',name:'NOKIA 220',qty:5,price:230,category:'هواتف عادية',lowStock:5},
+  {id:'p109',name:'NOKIA 110',qty:4,price:380,category:'هواتف عادية',lowStock:5},
+  {id:'p110',name:'NOKIA 108 صيني',qty:35,price:185,category:'هواتف عادية',lowStock:10},
+  {id:'p111',name:'NOKIA 105 افريقيا',qty:3,price:480,category:'هواتف عادية',lowStock:3},
+  {id:'p112',name:'NOKIA 105 اصلي',qty:21,price:520,category:'هواتف عادية',lowStock:10},
+  {id:'p113',name:'NKS كابل',qty:1,price:20,category:'كابلات',lowStock:2},
+  {id:'p114',name:'NKS شاحن',qty:1,price:45,category:'شواحن',lowStock:2},
+  {id:'p115',name:'NKC 313 شاحن',qty:62,price:40,category:'شواحن',lowStock:20},
+  {id:'p116',name:'N349 باف',qty:10,price:220,category:'أجهزة صوتية',lowStock:5},
+  {id:'p117',name:'MP3 X8',qty:200,price:50,category:'أجهزة صوتية',lowStock:20},
+  {id:'p118',name:'MP3 تايبسي',qty:400,price:65,category:'أجهزة صوتية',lowStock:50},
+  {id:'p119',name:'MP X85',qty:155,price:55,category:'أجهزة صوتية',lowStock:20},
+  {id:'p120',name:'MP PD',qty:12,price:65,category:'أجهزة صوتية',lowStock:10},
+  {id:'p121',name:'MP BHAET',qty:12,price:50,category:'أجهزة صوتية',lowStock:10},
+  {id:'p122',name:'MP سيارة S1',qty:156,price:65,category:'أجهزة صوتية',lowStock:20},
+  {id:'p123',name:'MP سيارة  X85',qty:12,price:65,category:'أجهزة صوتية',lowStock:10},
+  {id:'p124',name:'MP سيارة',qty:83,price:65,category:'أجهزة صوتية',lowStock:20},
+  {id:'p125',name:'MAMAK 65W شاحتن',qty:45,price:65,category:'أخرى',lowStock:10},
+  {id:'p126',name:'MIRACL 50 تلفون',qty:4,price:450,category:'هواتف ذكية',lowStock:5},
+  {id:'p127',name:'MBC 313 كابل',qty:51,price:21,category:'كابلات',lowStock:20},
+  {id:'p128',name:'MAMAK شاحن',qty:14,price:88,category:'شواحن',lowStock:10},
+  {id:'p129',name:'MAMAK 200 شاحن',qty:266,price:95,category:'شواحن',lowStock:50},
+  {id:'p130',name:'MAMAK 300 شاحن',qty:3,price:92,category:'شواحن',lowStock:3},
+  {id:'p131',name:'MAMAK 240 شاحن',qty:119,price:92,category:'شواحن',lowStock:20},
+  {id:'p132',name:'MAMAK 120 شاحن',qty:200,price:95,category:'شواحن',lowStock:20},
+  {id:'p133',name:'MA 806 S باف',qty:87,price:135,category:'أجهزة صوتية',lowStock:20},
+  {id:'p134',name:'M10 كوتير',qty:1,price:120,category:'سماعات وكوتير',lowStock:2},
+  {id:'p135',name:'M06 MEDME كاصك',qty:4,price:210,category:'سماعات وكوتير',lowStock:5},
+  {id:'p136',name:'LS 1201 باف',qty:1,price:170,category:'أجهزة صوتية',lowStock:2},
+  {id:'p137',name:'LC 368',qty:1,price:650,category:'أخرى',lowStock:2},
+  {id:'p138',name:'L8 باف',qty:108,price:95,category:'أجهزة صوتية',lowStock:20},
+  {id:'p139',name:'L-803 فكساسيون',qty:22,price:45,category:'اكسسوارات',lowStock:10},
+  {id:'p140',name:'KTS  كاسك 1057',qty:6,price:110,category:'سماعات وكوتير',lowStock:5},
+  {id:'p141',name:'KGTEC 2160',qty:1,price:270,category:'أخرى',lowStock:2},
+  {id:'p142',name:'KALEAL',qty:3,price:45,category:'أخرى',lowStock:3},
+  {id:'p143',name:'K70 كابل كوراه',qty:31,price:35,category:'كابلات',lowStock:10},
+  {id:'p144',name:'K70 شاحن كوص',qty:30,price:46,category:'شواحن',lowStock:10},
+  {id:'p145',name:'K28 شاحن كوص الاخضر',qty:6,price:43,category:'شواحن',lowStock:5},
+  {id:'p146',name:'K2211B كاسك',qty:16,price:170,category:'سماعات وكوتير',lowStock:10},
+  {id:'p147',name:'K12 باف',qty:43,price:130,category:'أجهزة صوتية',lowStock:10},
+  {id:'p148',name:'JMالبيظة توندزت',qty:4,price:230,category:'أجهزة صوتية',lowStock:5},
+  {id:'p149',name:'JM توندزست',qty:39,price:270,category:'أخرى',lowStock:10},
+  {id:'p150',name:'ITEL 5606 صيني',qty:20,price:350,category:'هواتف عادية',lowStock:10},
+  {id:'p151',name:'ITEL 5606 دبي',qty:4,price:220,category:'هواتف عادية',lowStock:5},
+  {id:'p152',name:'I 12 PRO',qty:35,price:50,category:'أخرى',lowStock:10},
+  {id:'p153',name:'HF 731 شيارة',qty:1,price:250,category:'اكسسوارات',lowStock:2},
+  {id:'p154',name:'GPP MY توندست جيمي',qty:40,price:270,category:'أجهزة صوتية',lowStock:10},
+  {id:'p155',name:'GD-106 طاقة',qty:7,price:480,category:'أخرى',lowStock:5},
+  {id:'p156',name:'G4152 كاصك',qty:3,price:250,category:'سماعات وكوتير',lowStock:3},
+  {id:'p157',name:'G38 MP سيارة',qty:30,price:65,category:'أجهزة صوتية',lowStock:10},
+  {id:'p158',name:'G14 ST41 وقاته',qty:8,price:750,category:'اكسسوارات',lowStock:5},
+  {id:'p159',name:'G10 MIN كوتير',qty:6,price:170,category:'سماعات وكوتير',lowStock:5},
+  {id:'p160',name:'FRX شاحن',qty:1,price:100,category:'شواحن',lowStock:2},
+  {id:'p161',name:'FAN شيارة',qty:1,price:210,category:'اكسسوارات',lowStock:2},
+  {id:'p162',name:'F805 كوتير',qty:7,price:130,category:'سماعات وكوتير',lowStock:5},
+  {id:'p163',name:'F68 باف',qty:15,price:240,category:'أجهزة صوتية',lowStock:10},
+  {id:'p164',name:'F5260 رنغلايت',qty:3,price:300,category:'أجهزة صوتية',lowStock:3},
+  {id:'p165',name:'F30 باف',qty:46,price:140,category:'أجهزة صوتية',lowStock:10},
+  {id:'p166',name:'F120 A20T باف',qty:2,price:140,category:'أجهزة صوتية',lowStock:2},
+  {id:'p167',name:'F120 باف',qty:12,price:166,category:'أجهزة صوتية',lowStock:10},
+  {id:'p168',name:'F109 باف',qty:3,price:235,category:'أجهزة صوتية',lowStock:3},
+  {id:'p169',name:'F105 باف',qty:105,price:225,category:'أجهزة صوتية',lowStock:20},
+  {id:'p170',name:'F06 باف الصك',qty:14,price:210,category:'أجهزة صوتية',lowStock:10},
+  {id:'p171',name:'E832 باف',qty:7,price:219,category:'أجهزة صوتية',lowStock:5},
+  {id:'p172',name:'E 58 درون',qty:1,price:750,category:'أخرى',lowStock:2},
+  {id:'p173',name:'DATA ANKER كابل 313',qty:21,price:19,category:'كابلات',lowStock:10},
+  {id:'p174',name:'DATA كابل',qty:2,price:110,category:'كابلات',lowStock:2},
+  {id:'p175',name:'D9 كاصك',qty:1,price:65,category:'سماعات وكوتير',lowStock:2},
+  {id:'p176',name:'D46 كوتير',qty:15,price:33,category:'سماعات وكوتير',lowStock:10},
+  {id:'p177',name:'D42 كوتير',qty:10,price:33,category:'سماعات وكوتير',lowStock:5},
+  {id:'p178',name:'D39 كوتير بلو',qty:20,price:32,category:'سماعات وكوتير',lowStock:10},
+  {id:'p179',name:'D39 كوتير',qty:10,price:33,category:'سماعات وكوتير',lowStock:5},
+  {id:'p180',name:'CHWGEN Y AE SRI',qty:35,price:110,category:'أخرى',lowStock:10},
+  {id:'p181',name:'CHMEX G 1701',qty:84,price:170,category:'أخرى',lowStock:20},
+  {id:'p182',name:'CH M 120',qty:7,price:90,category:'أخرى',lowStock:5},
+  {id:'p183',name:'BT21 كوتير',qty:1,price:220,category:'سماعات وكوتير',lowStock:2},
+  {id:'p184',name:'BT 340X باف',qty:2,price:250,category:'أجهزة صوتية',lowStock:2},
+  {id:'p185',name:'BT 3401 باف',qty:3,price:190,category:'أجهزة صوتية',lowStock:3},
+  {id:'p186',name:'black شاحن',qty:6,price:65,category:'شواحن',lowStock:5},
+  {id:'p187',name:'BIK 30000 باور',qty:18,price:360,category:'باوربانك',lowStock:10},
+  {id:'p188',name:'BAVIN شاحن',qty:36,price:113,category:'شواحن',lowStock:10},
+  {id:'p189',name:'BASS باف سيارة',qty:1,price:250,category:'أجهزة صوتية',lowStock:2},
+  {id:'p190',name:'B39 كوتير',qty:170,price:32,category:'سماعات وكوتير',lowStock:20},
+  {id:'p191',name:'B36 باف',qty:48,price:530,category:'أجهزة صوتية',lowStock:10},
+  {id:'p192',name:'B338 باتري',qty:1,price:60,category:'اكسسوارات',lowStock:2},
+  {id:'p193',name:'AY 495',qty:2,price:250,category:'أخرى',lowStock:2},
+  {id:'p194',name:'ANS 313 شاحن',qty:5,price:45,category:'شواحن',lowStock:5},
+  {id:'p195',name:'ANKER كابل ايفون',qty:1,price:550,category:'هواتف ذكية',lowStock:2},
+  {id:'p196',name:'AI 159 باف',qty:33,price:195,category:'أجهزة صوتية',lowStock:10},
+  {id:'p197',name:'AAT كابل',qty:10,price:20,category:'كابلات',lowStock:5},
+  {id:'p198',name:'A82 باف',qty:3,price:105,category:'أجهزة صوتية',lowStock:3},
+  {id:'p199',name:'A46 كوتير',qty:17,price:33,category:'سماعات وكوتير',lowStock:10},
+  {id:'p200',name:'A42 كوتير',qty:10,price:35,category:'سماعات وكوتير',lowStock:5},
+  {id:'p201',name:'A20T 500 باف',qty:5,price:140,category:'أجهزة صوتية',lowStock:5},
+  {id:'p202',name:'A159I باف',qty:38,price:190,category:'أجهزة صوتية',lowStock:10},
+  {id:'p203',name:'A 16 128',qty:3,price:5050,category:'أخرى',lowStock:3},
+  {id:'p204',name:'وقاتة ابنماه',qty:44,price:1180,category:'اكسسوارات',lowStock:10},
+  {id:'p205',name:'نوكيا 110',qty:72,price:380,category:'هواتف عادية',lowStock:20},
+  {id:'p206',name:'نوكيا 105 عادي',qty:60,price:185,category:'هواتف عادية',lowStock:20},
+  {id:'p207',name:'نوكيا 105 اصلية',qty:10,price:520,category:'هواتف عادية',lowStock:5},
+  {id:'p208',name:'منت سوني بلي 2',qty:7,price:85,category:'اكسسوارات',lowStock:5},
+  {id:'p209',name:'كوتير بلو',qty:34,price:59,category:'سماعات وكوتير',lowStock:10},
+  {id:'p210',name:'مسبحة',qty:4,price:250,category:'اكسسوارات',lowStock:5},
+  {id:'p211',name:'كوص باتري',qty:10,price:43,category:'اكسسوارات',lowStock:5},
+  {id:'p212',name:'كوص',qty:6,price:43,category:'أخرى',lowStock:5},
+  {id:'p213',name:'كوتير نيو',qty:638,price:13,category:'سماعات وكوتير',lowStock:50},
+  {id:'p214',name:'كوتير S8',qty:3,price:50,category:'سماعات وكوتير',lowStock:3},
+  {id:'p215',name:'كوتير KL 21',qty:2,price:170,category:'سماعات وكوتير',lowStock:2},
+  {id:'p216',name:'كوتير HI FI طيبة',qty:28,price:35,category:'سماعات وكوتير',lowStock:10},
+  {id:'p217',name:'كوتير BLACK',qty:40,price:32,category:'سماعات وكوتير',lowStock:10},
+  {id:'p218',name:'كوتير ماص بلو',qty:15,price:210,category:'سماعات وكوتير',lowStock:10},
+  {id:'p219',name:'كوتير كاصك',qty:1,price:200,category:'سماعات وكوتير',lowStock:2},
+  {id:'p220',name:'كوتير كاسك بلو',qty:5,price:220,category:'سماعات وكوتير',lowStock:5},
+  {id:'p221',name:'كوتير عادي 141',qty:20,price:32,category:'سماعات وكوتير',lowStock:10},
+  {id:'p222',name:'كوتير ردمي',qty:2,price:220,category:'سماعات وكوتير',lowStock:2},
+  {id:'p223',name:'كوتير بست',qty:3,price:35,category:'سماعات وكوتير',lowStock:3},
+  {id:'p224',name:'كوتير ايفون عادي',qty:10,price:35,category:'هواتف ذكية',lowStock:5},
+  {id:'p225',name:'كوتير ايفون 7',qty:3,price:32,category:'هواتف ذكية',lowStock:3},
+  {id:'p226',name:'كوتير 14PRO عادي',qty:15,price:33,category:'سماعات وكوتير',lowStock:10},
+  {id:'p227',name:'كوتير  7',qty:22,price:33,category:'سماعات وكوتير',lowStock:10},
+  {id:'p228',name:'كرت مموار 3200',qty:15,price:110,category:'اكسسوارات',lowStock:10},
+  {id:'p229',name:'كرت مموار 16',qty:35,price:95,category:'اكسسوارات',lowStock:10},
+  {id:'p230',name:'كرت 8',qty:25,price:90,category:'اكسسوارات',lowStock:10},
+  {id:'p231',name:'كرت 64',qty:32,price:130,category:'اكسسوارات',lowStock:10},
+  {id:'p232',name:'كرت 32',qty:35,price:110,category:'اكسسوارات',lowStock:10},
+  {id:'p233',name:'كرت 16',qty:28,price:95,category:'اكسسوارات',lowStock:10},
+  {id:'p234',name:'كبل بافين',qty:75,price:60,category:'أجهزة صوتية',lowStock:20},
+  {id:'p235',name:'كارت 32',qty:8,price:110,category:'اكسسوارات',lowStock:5},
+  {id:'p236',name:'كادر سراميك',qty:157,price:15,category:'اكسسوارات',lowStock:20},
+  {id:'p237',name:'كادر العدالة جيد',qty:19393,price:10,category:'اكسسوارات',lowStock:100},
+  {id:'p238',name:'كادر اصلي طيبة',qty:20,price:9,category:'اكسسوارات',lowStock:10},
+  {id:'p239',name:'كادر 17 برو ماكس',qty:240,price:6,category:'اكسسوارات',lowStock:50},
+  {id:'p240',name:'كابل TDK W27',qty:14,price:28,category:'كابلات',lowStock:10},
+  {id:'p241',name:'كابل tdk c 27 w',qty:540,price:32,category:'كابلات',lowStock:50},
+  {id:'p242',name:'كابل RIM 777',qty:998,price:20,category:'كابلات',lowStock:50},
+  {id:'p243',name:'كابل NKC 331 يو اس بي',qty:69,price:18,category:'كابلات',lowStock:20},
+  {id:'p244',name:'كابل DATA',qty:10,price:19,category:'كابلات',lowStock:5},
+  {id:'p245',name:'كابل يو اس بي',qty:4,price:30,category:'كابلات',lowStock:5},
+  {id:'p246',name:'كابل يو اس بي ايفون TDK',qty:350,price:2,category:'هواتف ذكية',lowStock:50},
+  {id:'p247',name:'كابل لكرسي',qty:4,price:22,category:'كابلات',lowStock:5},
+  {id:'p248',name:'كابل فاست',qty:142,price:31,category:'كابلات',lowStock:20},
+  {id:'p249',name:'كابل عادي',qty:1123,price:20,category:'كابلات',lowStock:100},
+  {id:'p250',name:'كابل طيبة',qty:3,price:20,category:'كابلات',lowStock:3},
+  {id:'p251',name:'كابل ريم',qty:2,price:20,category:'كابلات',lowStock:2},
+  {id:'p252',name:'كابل تايبسي ايفون',qty:30,price:14,category:'هواتف ذكية',lowStock:10},
+  {id:'p253',name:'كابل تايبسي اورايمو  كبير',qty:436,price:41,category:'كابلات',lowStock:50},
+  {id:'p254',name:'كابل يو اس بي 313 NK',qty:48,price:20,category:'كابلات',lowStock:10},
+  {id:'p255',name:'كابل بافين تايبسيى',qty:16,price:90,category:'كابلات',lowStock:10},
+  {id:'p256',name:'كابل بافين',qty:2,price:70,category:'كابلات',lowStock:2},
+  {id:'p257',name:'كابل ايفون عادي',qty:766,price:15,category:'هواتف ذكية',lowStock:50},
+  {id:'p258',name:'كابل اورايمو عادي',qty:160,price:19,category:'كابلات',lowStock:20},
+  {id:'p259',name:'كابل اورايمو',qty:25,price:22,category:'كابلات',lowStock:10},
+  {id:'p260',name:'كابل او تو جي',qty:2,price:30,category:'كابلات',lowStock:2},
+  {id:'p261',name:'كابل 313 27 w',qty:540,price:32,category:'كابلات',lowStock:50},
+  {id:'p262',name:'كابل 3 فيش 6A',qty:40,price:32,category:'كابلات',lowStock:10},
+  {id:'p263',name:'كابل 3 فيش 120',qty:33,price:30,category:'كابلات',lowStock:10},
+  {id:'p264',name:'كابل 3 فيش',qty:31,price:34,category:'كابلات',lowStock:10},
+  {id:'p265',name:'فكساسيون',qty:44,price:57,category:'اكسسوارات',lowStock:10},
+  {id:'p266',name:'فلاش 2',qty:15,price:63,category:'اكسسوارات',lowStock:10},
+  {id:'p267',name:'فكساسيون دراجة',qty:35,price:60,category:'اكسسوارات',lowStock:10},
+  {id:'p268',name:'عدسات',qty:239,price:19,category:'اكسسوارات',lowStock:50},
+  {id:'p269',name:'ططاقة صغير جوهرة',qty:4,price:150,category:'أخرى',lowStock:5},
+  {id:'p270',name:'طاقة متوسطة السنغال',qty:5,price:310,category:'أخرى',lowStock:5},
+  {id:'p271',name:'طاقة متوسطة',qty:1,price:310,category:'أخرى',lowStock:2},
+  {id:'p272',name:'طاقة كبيرة',qty:6,price:600,category:'أخرى',lowStock:5},
+  {id:'p273',name:'طاقة صغيره',qty:4,price:210,category:'أخرى',lowStock:5},
+  {id:'p274',name:'طاقة صغيرة لوح',qty:23,price:107,category:'أخرى',lowStock:10},
+  {id:'p275',name:'طاقة ستريم',qty:1,price:28,category:'أخرى',lowStock:2},
+  {id:'p276',name:'طاقة جوهرة',qty:3,price:150,category:'أخرى',lowStock:3},
+  {id:'p277',name:'طاقة السنغال',qty:34,price:286,category:'أخرى',lowStock:10},
+  {id:'p278',name:'ص5G ويفي',qty:1,price:650,category:'اكسسوارات',lowStock:2},
+  {id:'p279',name:'شيارة فلكس',qty:1,price:300,category:'اكسسوارات',lowStock:2},
+  {id:'p280',name:'شن وقاتة',qty:26,price:80,category:'اكسسوارات',lowStock:10},
+  {id:'p281',name:'شاحن tdkc 35 w',qty:71,price:93,category:'شواحن',lowStock:20},
+  {id:'p282',name:'شاحن tdkc 313  s8 45 w',qty:89,price:86,category:'شواحن',lowStock:20},
+  {id:'p283',name:'شاحن TDK',qty:3,price:125,category:'شواحن',lowStock:3},
+  {id:'p284',name:'شاحن MAMAK',qty:2,price:75,category:'شواحن',lowStock:2},
+  {id:'p285',name:'شاحن CHHEN 120',qty:16,price:95,category:'شواحن',lowStock:10},
+  {id:'p286',name:'شاحن يو اس بي ركلسي',qty:5,price:85,category:'شواحن',lowStock:5},
+  {id:'p287',name:'شاحن يو اس بي',qty:32,price:85,category:'شواحن',lowStock:10},
+  {id:'p288',name:'شاحن كوص الابيض',qty:9,price:40,category:'شواحن',lowStock:5},
+  {id:'p289',name:'شاحن كوص ال 8600',qty:6,price:35,category:'شواحن',lowStock:5},
+  {id:'p290',name:'شاحن كوص',qty:11,price:43,category:'شواحن',lowStock:10},
+  {id:'p291',name:'شاحن فايربكس',qty:3,price:85,category:'شواحن',lowStock:3},
+  {id:'p292',name:'شاحن فاست',qty:1,price:45,category:'شواحن',lowStock:2},
+  {id:'p293',name:'شاحن شاومي',qty:6,price:120,category:'شواحن',lowStock:5},
+  {id:'p294',name:'شاحن سيارة بريكه',qty:10,price:45,category:'شواحن',lowStock:5},
+  {id:'p295',name:'شاحن ركلسي 20 w',qty:142,price:65,category:'شواحن',lowStock:20},
+  {id:'p296',name:'شاحن ركلسي 2.4A',qty:24,price:80,category:'شواحن',lowStock:10},
+  {id:'p297',name:'شاحن ركلسي',qty:82,price:70,category:'شواحن',lowStock:20},
+  {id:'p298',name:'شاحن ردمي 67 W',qty:500,price:85,category:'شواحن',lowStock:50},
+  {id:'p299',name:'شاحن ردمي 120 w',qty:61,price:85,category:'شواحن',lowStock:20},
+  {id:'p300',name:'شاحن داكويا 30W',qty:4,price:30,category:'شواحن',lowStock:5},
+  {id:'p301',name:'شاحن داكوي',qty:221,price:18,category:'شواحن',lowStock:50},
+  {id:'p302',name:'شاحن تايبسي عادي',qty:1548,price:32,category:'شواحن',lowStock:100},
+  {id:'p303',name:'شاحن بريكة',qty:1,price:50,category:'شواحن',lowStock:2},
+  {id:'p304',name:'شاحن بافين يو اس بي',qty:93,price:110,category:'شواحن',lowStock:20},
+  {id:'p305',name:'شاحن بافين تايبسي',qty:74,price:110,category:'شواحن',lowStock:20},
+  {id:'p306',name:'شاحن بافين',qty:5,price:110,category:'شواحن',lowStock:5},
+  {id:'p307',name:'شاحن ايفون tdkc 50w',qty:400,price:125,category:'هواتف ذكية',lowStock:50},
+  {id:'p308',name:'شاحن ايفون عادي',qty:300,price:30,category:'هواتف ذكية',lowStock:50},
+  {id:'p309',name:'شاحن ايفون 25 w الصادق',qty:232,price:48,category:'هواتف ذكية',lowStock:50},
+  {id:'p310',name:'شاحن ايبكوم s6',qty:34,price:65,category:'شواحن',lowStock:10},
+  {id:'p311',name:'شاحن اورايمو عادي كبير',qty:194,price:43,category:'شواحن',lowStock:20},
+  {id:'p312',name:'شاحن اورايمو عادي صغير',qty:363,price:23,category:'شواحن',lowStock:50},
+  {id:'p313',name:'شاحن اورايمو عادي',qty:273,price:21,category:'شواحن',lowStock:50},
+  {id:'p314',name:'شاحن اورايمو',qty:136,price:42,category:'شواحن',lowStock:20},
+  {id:'p315',name:'شاحن العدالة ايفون',qty:2444,price:100,category:'هواتف ذكية',lowStock:100},
+  {id:'p316',name:'شاحن كوتير',qty:40,price:120,category:'شواحن',lowStock:10},
+  {id:'p317',name:'شاحن 313 TDK يو اس بي',qty:1,price:75,category:'شواحن',lowStock:2},
+  {id:'p318',name:'سولري جهاز',qty:52,price:75,category:'أجهزة صوتية',lowStock:20},
+  {id:'p319',name:'ريكلسي كيبل ايفون',qty:10,price:24,category:'هواتف ذكية',lowStock:5},
+  {id:'p320',name:'رولانج',qty:1,price:95,category:'أخرى',lowStock:2},
+  {id:'p321',name:'رنكلايت صغيره',qty:1,price:350,category:'أجهزة صوتية',lowStock:2},
+  {id:'p322',name:'رنكلايت شيارة 260',qty:4,price:300,category:'أجهزة صوتية',lowStock:5},
+  {id:'p323',name:'رنكلايت',qty:2,price:800,category:'أجهزة صوتية',lowStock:2},
+  {id:'p324',name:'ركلسي 20W',qty:60,price:65,category:'أخرى',lowStock:20},
+  {id:'p325',name:'ركلسي 20',qty:20,price:22,category:'أخرى',lowStock:10},
+  {id:'p326',name:'رشاشة',qty:1,price:80,category:'أخرى',lowStock:2},
+  {id:'p327',name:'درون E58',qty:2,price:750,category:'أخرى',lowStock:2},
+  {id:'p328',name:'تلفون كلاب',qty:1,price:460,category:'هواتف ذكية',lowStock:2},
+  {id:'p329',name:'تت يو اس بي عادي',qty:27,price:21,category:'كابلات',lowStock:10},
+  {id:'p330',name:'تت يو اس بي',qty:700,price:15,category:'كابلات',lowStock:50},
+  {id:'p331',name:'تت عادي',qty:43,price:24,category:'كابلات',lowStock:10},
+  {id:'p332',name:'تت تايبسي عادي',qty:210,price:24,category:'كابلات',lowStock:50},
+  {id:'p333',name:'تت تايبسي',qty:240,price:24,category:'كابلات',lowStock:50},
+  {id:'p334',name:'تت بافين',qty:42,price:60,category:'كابلات',lowStock:10},
+  {id:'p335',name:'تت اصلي',qty:532,price:35,category:'كابلات',lowStock:50},
+  {id:'p336',name:'بوشت لحبل',qty:150,price:50,category:'اكسسوارات',lowStock:20},
+  {id:'p337',name:'بوشت عيد الاستقلال',qty:30,price:40,category:'اكسسوارات',lowStock:10},
+  {id:'p338',name:'بوشت سيمبل',qty:74,price:30,category:'اكسسوارات',lowStock:20},
+  {id:'p339',name:'بوشت 480',qty:60,price:48,category:'اكسسوارات',lowStock:20},
+  {id:'p340',name:'بوشت 450',qty:14,price:45,category:'اكسسوارات',lowStock:10},
+  {id:'p341',name:'بوشت 400',qty:41,price:42,category:'اكسسوارات',lowStock:10},
+  {id:'p342',name:'بوشت',qty:321,price:50,category:'اكسسوارات',lowStock:50},
+  {id:'p343',name:'بريكه',qty:1,price:35,category:'أخرى',lowStock:2},
+  {id:'p344',name:'بركت كابل',qty:66,price:45,category:'كابلات',lowStock:20},
+  {id:'p345',name:'بركت 38W',qty:9,price:35,category:'أخرى',lowStock:5},
+  {id:'p346',name:'براد للهاتف',qty:1,price:450,category:'أخرى',lowStock:2},
+  {id:'p347',name:'باوربانك عادي',qty:1,price:280,category:'باوربانك',lowStock:2},
+  {id:'p348',name:'باوربانك ركلسي',qty:1,price:950,category:'باوربانك',lowStock:2},
+  {id:'p349',name:'باوربانك ايبيكوم',qty:1,price:730,category:'باوربانك',lowStock:2},
+  {id:'p350',name:'باوربانك 80000 النهضة',qty:21,price:580,category:'باوربانك',lowStock:10},
+  {id:'p351',name:'باوربانك 60000 النهضة',qty:1,price:480,category:'باوربانك',lowStock:2},
+  {id:'p352',name:'باوربانك 50000',qty:42,price:530,category:'باوربانك',lowStock:10},
+  {id:'p353',name:'باوربانك 30000 TDK',qty:2,price:370,category:'باوربانك',lowStock:2},
+  {id:'p354',name:'باوربانك 30000 MBC',qty:409,price:217,category:'باوربانك',lowStock:50},
+  {id:'p355',name:'باوربانك 20000 VEIREX',qty:59,price:245,category:'باوربانك',lowStock:20},
+  {id:'p356',name:'باوربانك 20000 MBC',qty:8,price:375,category:'باوربانك',lowStock:5},
+  {id:'p357',name:'باوربانك 120000 MBC',qty:1,price:1100,category:'باوربانك',lowStock:2},
+  {id:'p358',name:'باوربانك 120000 BARAKA',qty:18,price:1130,category:'باوربانك',lowStock:10},
+  {id:'p359',name:'باوربانك 10000 MBC',qty:1,price:190,category:'باوربانك',lowStock:2},
+  {id:'p360',name:'باور بانك اورايمو 10000عادي',qty:2,price:210,category:'باوربانك',lowStock:2},
+  {id:'p361',name:'باور  MB 313',qty:4,price:340,category:'باوربانك',lowStock:5},
+  {id:'p362',name:'باف X511',qty:1,price:150,category:'أجهزة صوتية',lowStock:2},
+  {id:'p363',name:'باف E832',qty:1,price:220,category:'أجهزة صوتية',lowStock:2},
+  {id:'p364',name:'باف A82',qty:1,price:145,category:'أجهزة صوتية',lowStock:2},
+  {id:'p365',name:'باف 806',qty:1,price:130,category:'أجهزة صوتية',lowStock:2},
+  {id:'p366',name:'باف 69',qty:1,price:220,category:'أجهزة صوتية',lowStock:2},
+  {id:'p367',name:'باف 301',qty:1,price:100,category:'أجهزة صوتية',lowStock:2},
+  {id:'p368',name:'باف 106',qty:1,price:160,category:'أجهزة صوتية',lowStock:2},
+  {id:'p369',name:'باف 1057',qty:3,price:100,category:'أجهزة صوتية',lowStock:3},
+  {id:'p370',name:'باسبارتو',qty:6,price:44,category:'اكسسوارات',lowStock:5},
+  {id:'p371',name:'باتري عادي',qty:1427,price:14,category:'اكسسوارات',lowStock:100},
+  {id:'p372',name:'ايربود PRO',qty:6,price:155,category:'سماعات وكوتير',lowStock:5},
+  {id:'p373',name:'اورايمو كبير',qty:50,price:40,category:'أخرى',lowStock:10},
+  {id:'p374',name:'اكوتير نيو',qty:83,price:13,category:'سماعات وكوتير',lowStock:20},
+  {id:'p375',name:'ابياج نوكيا',qty:10,price:17,category:'هواتف عادية',lowStock:5},
+  {id:'p376',name:'999 توندست صغيرة',qty:2,price:145,category:'أجهزة صوتية',lowStock:2},
+  {id:'p377',name:'9026 باف الطايرة',qty:33,price:201,category:'أجهزة صوتية',lowStock:10},
+  {id:'p378',name:'810 باف',qty:32,price:110,category:'أجهزة صوتية',lowStock:10},
+  {id:'p379',name:'808 توندزت',qty:4,price:260,category:'أجهزة صوتية',lowStock:5},
+  {id:'p380',name:'805 كوتير بلوتوث',qty:200,price:130,category:'سماعات وكوتير',lowStock:20},
+  {id:'p381',name:'777 كابل ريم',qty:50,price:20,category:'كابلات',lowStock:10},
+  {id:'p382',name:'777 45W شاحن',qty:17,price:65,category:'شواحن',lowStock:10},
+  {id:'p383',name:'714 كوتير عادي',qty:770,price:32,category:'سماعات وكوتير',lowStock:50},
+  {id:'p384',name:'68W شاحن فاست',qty:9,price:85,category:'شواحن',lowStock:5},
+  {id:'p385',name:'67W شاحن شاومي',qty:245,price:85,category:'شواحن',lowStock:50},
+  {id:'p386',name:'65 MAMAK شاحن',qty:28,price:65,category:'شواحن',lowStock:10},
+  {id:'p387',name:'460 رنكلايت',qty:2,price:800,category:'أجهزة صوتية',lowStock:2},
+  {id:'p388',name:'402 TECNO',qty:4,price:590,category:'هواتف ذكية',lowStock:5},
+  {id:'p389',name:'3G كابل',qty:6,price:35,category:'كابلات',lowStock:5},
+  {id:'p390',name:'35 W شاحن الصادق',qty:180,price:48,category:'شواحن',lowStock:20},
+  {id:'p391',name:'328 رنكلايت',qty:2,price:650,category:'أجهزة صوتية',lowStock:2},
+  {id:'p392',name:'313 NK كيبل',qty:3,price:25,category:'كابلات',lowStock:3},
+  {id:'p393',name:'310 باف',qty:69,price:110,category:'أجهزة صوتية',lowStock:20},
+  {id:'p394',name:'3060 رادو باف',qty:20,price:230,category:'أجهزة صوتية',lowStock:10},
+  {id:'p395',name:'3 فيش كابل فاست',qty:260,price:28,category:'كابلات',lowStock:50},
+  {id:'p396',name:'2706 تابلت',qty:1,price:900,category:'أجهزة لوحية',lowStock:2},
+  {id:'p397',name:'2608 توندزت',qty:2,price:260,category:'أجهزة صوتية',lowStock:2},
+  {id:'p398',name:'2435 باف مكرو',qty:6,price:330,category:'أجهزة صوتية',lowStock:5},
+  {id:'p399',name:'2366 باف وايرلس',qty:13,price:201,category:'أجهزة صوتية',lowStock:10},
+  {id:'p400',name:'219 باف',qty:16,price:170,category:'أجهزة صوتية',lowStock:10},
+  {id:'p401',name:'20W شاحن ركلسي',qty:173,price:53,category:'شواحن',lowStock:20},
+  {id:'p402',name:'207 شاحن بافين',qty:27,price:110,category:'شواحن',lowStock:10},
+  {id:'p403',name:'200 MAMAK شاحن',qty:10,price:82,category:'شواحن',lowStock:5},
+  {id:'p404',name:'178 FHT باف رادو صغير',qty:21,price:14,category:'أجهزة صوتية',lowStock:10},
+  {id:'p405',name:'162 باف سيارة',qty:22,price:230,category:'أجهزة صوتية',lowStock:10},
+  {id:'p406',name:'159 I باف',qty:1,price:190,category:'أجهزة صوتية',lowStock:2},
+  {id:'p407',name:'14 برو ماكس اكوتير عادي',qty:70,price:31,category:'سماعات وكوتير',lowStock:20},
+  {id:'p408',name:'1360 باف',qty:5,price:164,category:'أجهزة صوتية',lowStock:5},
+  {id:'p409',name:'1316 باف',qty:14,price:321,category:'أجهزة صوتية',lowStock:10},
+  {id:'p410',name:'13 SEMPEL 128 مستعملة',qty:1,price:12900,category:'أخرى',lowStock:2},
+  {id:'p411',name:'13 PRO MAX ايفون',qty:1,price:18600,category:'هواتف ذكية',lowStock:2},
+  {id:'p412',name:'13 310',qty:6,price:250,category:'أخرى',lowStock:5},
+  {id:'p413',name:'120000 باوربانك',qty:12,price:1420,category:'باوربانك',lowStock:10},
+  {id:'p414',name:'12 SMPPEL 128 جديدة',qty:1,price:10500,category:'هواتف ذكية',lowStock:2},
+  {id:'p415',name:'11-128 تلفون مستعملة',qty:1,price:8500,category:'هواتف ذكية',lowStock:2},
+  {id:'p416',name:'108 باف',qty:5,price:142,category:'أجهزة صوتية',lowStock:5},
+  {id:'p417',name:'1057 باف',qty:1,price:100,category:'أجهزة صوتية',lowStock:2},
+  {id:'p418',name:'105 نوكيا عادية',qty:300,price:185,category:'هواتف عادية',lowStock:50},
+  {id:'p419',name:'1038 باف سيارة',qty:151,price:14,category:'أجهزة صوتية',lowStock:20},
+  {id:'p420',name:'1036 باف',qty:10,price:590,category:'أجهزة صوتية',lowStock:5},
+  {id:'p421',name:'1016 MINI باف',qty:56,price:200,category:'أجهزة صوتية',lowStock:20},
+  {id:'p422',name:'024 SS باف',qty:4,price:665,category:'أجهزة صوتية',lowStock:5},
+  {id:'p423',name:'02 باف',qty:1,price:160,category:'أجهزة صوتية',lowStock:2},
+  {id:'p424',name:'كادر عادي',qty:42775,price:17,category:'اكسسوارات',lowStock:100},
+  {id:'p425',name:'كادر حديد',qty:11600,price:8,category:'اكسسوارات',lowStock:100},
+  {id:'p426',name:'رشاشة بافين',qty:24,price:800,category:'أجهزة صوتية',lowStock:10},
+  {id:'p427',name:'كادر ايفون عادي',qty:1160,price:5,category:'هواتف ذكية',lowStock:100},
+  {id:'p428',name:'كادر عادي 17 بروماكس',qty:1850,price:6,category:'اكسسوارات',lowStock:100},
+  {id:'p429',name:'كادر حديد A13',qty:1000,price:10,category:'اكسسوارات',lowStock:50}
+];
+const INIT_SPECIAL=[
+  {id:'sp430',name:'التروال',value:450},
+  {id:'sp431',name:'بنكيلي',value:7100},
+  {id:'sp432',name:'فاتورة',value:2510}
+];
+
+
+const INIT_CUSTOMERS=[
+  {id:"c1",name:"محمد ولد احمد",phone:"22334455",avatar:"🧔",color:"#63b3ed"},
+  {id:"c2",name:"فاطمة بنت محمد",phone:"33445566",avatar:"👩",color:"#f472b6"},
+];
+
+/* ══════════════════════════════════════════════
+   ROOT
+══════════════════════════════════════════════ */
+function App(){
+  const[auth,setAuth]=useState(null);
+  const[adminPass,setAdminPass]=useState('1234');
+  const[products,setProducts]=useState(INIT_PRODUCTS);
+  const[customers,setCustomers]=useState(INIT_CUSTOMERS);
+  const[invoices,setInvoices]=useState([]);
+  const[special]=useState(INIT_SPECIAL);
+  const[dbReady,setDbReady]=useState(false);
+  const[syncing,setSyncing]=useState(false);
+  const skipSave=useRef(false); // prevent echo on remote update
+
+  // ── Load from Firebase on mount ──────────────
+  useEffect(()=>{
+    function init(){
+      if(!window._fb)return;
+      const {db,onSnapshot,collection}=window._fb;
+      setDbReady(true);
+
+      // Listen products
+      onSnapshot(collection(db,'products'), snap=>{
+        if(snap.empty) return;
+        const data=snap.docs.map(d=>d.data());
+        skipSave.current=true;
+        setProducts(data);
+        setTimeout(()=>{skipSave.current=false;},200);
+      });
+
+      // Listen customers
+      onSnapshot(collection(db,'customers'), snap=>{
+        if(snap.empty) return;
+        const data=snap.docs.map(d=>d.data());
+        skipSave.current=true;
+        setCustomers(data);
+        setTimeout(()=>{skipSave.current=false;},200);
+      });
+
+      // Listen invoices
+      onSnapshot(collection(db,'invoices'), snap=>{
+        if(snap.empty) return;
+        const data=snap.docs.map(d=>d.data()).sort((a,b)=>b.num?.localeCompare?.(a.num)||0);
+        skipSave.current=true;
+        setInvoices(data);
+        setTimeout(()=>{skipSave.current=false;},200);
+      });
+
+      // Load settings (password)
+      window._fb.fbLoad('settings').then(rows=>{
+        if(rows&&rows.length>0&&rows[0].adminPass){
+          setAdminPass(rows[0].adminPass);
+        }
+      });
+    }
+    if(window._fbReady){ init(); }
+    else{ window.addEventListener('fbReady', init, {once:true}); }
+    return()=>window.removeEventListener('fbReady',init);
+  },[]);
+
+  // ── Save products to Firebase whenever they change ──
+  useEffect(()=>{
+    if(!dbReady||skipSave.current)return;
+    const {fbSave}=window._fb;
+    products.forEach(p=>fbSave('products',p.id,p));
+  },[products,dbReady]);
+
+  // ── Save customers ──
+  useEffect(()=>{
+    if(!dbReady||skipSave.current)return;
+    const {fbSave}=window._fb;
+    customers.forEach(c=>fbSave('customers',c.id,c));
+  },[customers,dbReady]);
+
+  // ── Save invoices ──
+  useEffect(()=>{
+    if(!dbReady||skipSave.current)return;
+    const {fbSave}=window._fb;
+    invoices.forEach(i=>fbSave('invoices',i.id,i));
+  },[invoices,dbReady]);
+
+  // ── Save admin password ──
+  useEffect(()=>{
+    if(!dbReady)return;
+    const {fbSave}=window._fb;
+    fbSave('settings','config',{adminPass});
+  },[adminPass,dbReady]);
+
+  const lowStockProds=useMemo(()=>products.filter(p=>p.qty<=p.lowStock),[products]);
+  const totalInventoryValue=useMemo(()=>{
+    const prodVal=products.reduce((s,p)=>s+p.price*p.qty,0);
+    const spVal=special.reduce((s,x)=>s+x.value,0);
+    return prodVal+spVal;
+  },[products,special]);
+
+  function deductStock(lines){
+    setProducts(prev=>prev.map(p=>{
+      const l=lines.find(l=>l.id===p.id);
+      return l?{...p,qty:Math.max(0,p.qty-l.qty)}:p;
+    }));
+  }
+
+  // ── Delete product from Firebase too ──
+  function deleteProduct(id){
+    setProducts(prev=>prev.filter(p=>p.id!==id));
+    if(dbReady&&window._fb){
+      const {db,doc}=window._fb;
+      import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js")
+        .then(({deleteDoc})=>deleteDoc(doc(db,'products',id)))
+        .catch(()=>{});
+    }
+  }
+
+  // ── Delete customer from Firebase too ──
+  function deleteCustomer(id){
+    setCustomers(prev=>prev.filter(c=>c.id!==id));
+    if(dbReady&&window._fb){
+      const {db,doc}=window._fb;
+      import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js")
+        .then(({deleteDoc})=>deleteDoc(doc(db,'customers',id)))
+        .catch(()=>{});
+    }
+  }
+
+  // ── Delete invoice from Firebase too ──
+  function deleteInvoiceFb(id){
+    setInvoices(prev=>prev.filter(i=>i.id!==id));
+    if(dbReady&&window._fb){
+      const {db,doc}=window._fb;
+      import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js")
+        .then(({deleteDoc})=>deleteDoc(doc(db,'invoices',id)))
+        .catch(()=>{});
+    }
+  }
+
+  if(!auth)return <LoginPage onLogin={setAuth} adminPass={adminPass} dbReady={dbReady}/>;
+  if(auth==='customer')return <CustomerView products={products} onLogout={()=>setAuth(null)}/>;
+  return <AdminApp
+    products={products} setProducts={setProducts}
+    customers={customers} setCustomers={setCustomers}
+    invoices={invoices} setInvoices={setInvoices}
+    lowStockProds={lowStockProds}
+    totalInventoryValue={totalInventoryValue}
+    deductStock={deductStock}
+    onLogout={()=>setAuth(null)}
+    adminPass={adminPass} setAdminPass={setAdminPass}
+    dbReady={dbReady}
+    deleteProduct={deleteProduct}
+    deleteCustomer={deleteCustomer}
+    deleteInvoiceFb={deleteInvoiceFb}
+  />;
+}
+
+/* ══════════════════════════════════════════════
+   LOGIN PAGE
+══════════════════════════════════════════════ */
+function LoginPage({onLogin,adminPass,dbReady}){
+  const[pw,setPw]=useState('');
+  const[err,setErr]=useState(false);
+  const[shake,setShake]=useState(false);
+  function tryAdmin(){
+    if(pw===adminPass){onLogin('admin');}
+    else{setErr(true);setShake(true);setTimeout(()=>setShake(false),400);setTimeout(()=>setErr(false),2000);}
+  }
+  return(
+    <div style={{minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',background:'linear-gradient(160deg,#060a14,#0a1628,#060d1e)',padding:20,position:'relative',overflow:'hidden'}}>
+      <div style={{position:'absolute',inset:0,pointerEvents:'none'}}>
+        <div style={{position:'absolute',top:'-15%',right:'-10%',width:600,height:600,borderRadius:'50%',background:'radial-gradient(circle,rgba(99,179,237,.09) 0%,transparent 65%)',filter:'blur(50px)'}}/>
+        <div style={{position:'absolute',bottom:'-15%',left:'-10%',width:500,height:500,borderRadius:'50%',background:'radial-gradient(circle,rgba(167,139,250,.07) 0%,transparent 65%)',filter:'blur(50px)'}}/>
+        <div style={{position:'absolute',top:'40%',left:'50%',transform:'translate(-50%,-50%)',width:300,height:300,borderRadius:'50%',background:'radial-gradient(circle,rgba(52,211,153,.05) 0%,transparent 70%)',filter:'blur(40px)'}}/>
+      </div>
+      <div style={{position:'relative',zIndex:1,width:'100%',maxWidth:460}}>
+        <div style={{textAlign:'center',marginBottom:36}}>
+          <div style={{width:76,height:76,borderRadius:24,background:'linear-gradient(135deg,#3b82f6,#8b5cf6)',display:'inline-flex',alignItems:'center',justifyContent:'center',fontSize:34,boxShadow:'0 10px 30px rgba(59,130,246,.4)',marginBottom:16}}>⚡</div>
+          <div style={{fontSize:26,fontWeight:900,color:'#e2e8f0',letterSpacing:-.5}}>محل العدالة</div>
+          <div style={{fontSize:13,color:'rgba(148,163,184,.55)',marginTop:5}}>نظام إدارة المحل الشامل</div>
+          <div style={{marginTop:10,display:'inline-flex',alignItems:'center',gap:6,fontSize:11,padding:'4px 12px',borderRadius:50,background:dbReady?'rgba(52,211,153,.1)':'rgba(251,191,36,.1)',border:dbReady?'1px solid rgba(52,211,153,.25)':'1px solid rgba(251,191,36,.25)',color:dbReady?'#34d399':'#fbbf24'}}>
+            <span style={{width:7,height:7,borderRadius:'50%',background:dbReady?'#34d399':'#fbbf24',display:'inline-block',animation:dbReady?'none':'pulse 1.5s infinite'}}/>
+            {dbReady?'🔥 متصل بـ Firebase':'⏳ جاري الاتصال...'}
+          </div>
+        </div>
+
+        <div className='mob-grid1' style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14}}>
+          {/* Customer card */}
+          <div onClick={()=>onLogin('customer')} style={{background:'rgba(52,211,153,.07)',border:'1px solid rgba(52,211,153,.2)',borderRadius:20,padding:'24px 18px',textAlign:'center',cursor:'pointer',transition:'all .22s'}}
+            onMouseEnter={e=>{e.currentTarget.style.background='rgba(52,211,153,.13)';e.currentTarget.style.transform='translateY(-4px)';e.currentTarget.style.boxShadow='0 16px 36px rgba(52,211,153,.15)'}}
+            onMouseLeave={e=>{e.currentTarget.style.background='rgba(52,211,153,.07)';e.currentTarget.style.transform='translateY(0)';e.currentTarget.style.boxShadow='none'}}>
+            <div style={{fontSize:40,marginBottom:12}}>🛍️</div>
+            <div style={{fontSize:16,fontWeight:800,color:'#34d399',marginBottom:5}}>العميل</div>
+            <div style={{fontSize:12,color:'rgba(148,163,184,.6)',marginBottom:14,lineHeight:1.5}}>تصفح المنتجات واستكشف العروض</div>
+            <div style={{padding:'8px 0',background:'rgba(52,211,153,.18)',borderRadius:10,fontSize:13,fontWeight:700,color:'#34d399'}}>دخول فوري ←</div>
+          </div>
+
+          {/* Admin card */}
+          <div className={shake?'shake':''} style={{background:'rgba(99,179,237,.07)',border:err?'1px solid rgba(239,68,68,.4)':'1px solid rgba(99,179,237,.2)',borderRadius:20,padding:'24px 18px',textAlign:'center',transition:'border .3s'}}>
+            <div style={{fontSize:40,marginBottom:12}}>🔐</div>
+            <div style={{fontSize:16,fontWeight:800,color:'#63b3ed',marginBottom:5}}>المدير</div>
+            <div style={{fontSize:11,color:'rgba(148,163,184,.5)',marginBottom:10}}>أدخل كلمة المرور</div>
+            <input className='inp' type='password' placeholder='كلمة المرور...' value={pw}
+              onChange={e=>{setPw(e.target.value);setErr(false)}}
+              onKeyDown={e=>e.key==='Enter'&&tryAdmin()}
+              style={{marginBottom:8,textAlign:'center',fontSize:14,border:err?'1px solid rgba(239,68,68,.5)':'1px solid rgba(255,255,255,.1)'}}/>
+            <button className='btn' onClick={tryAdmin} style={{width:'100%',padding:'9px 0',background:err?'rgba(239,68,68,.2)':'linear-gradient(135deg,#3b82f6,#8b5cf6)',border:err?'1px solid rgba(239,68,68,.4)':'none',borderRadius:10,color:err?'#f87171':'#fff',fontWeight:700,fontSize:13,boxShadow:err?'none':'0 4px 12px rgba(59,130,246,.3)'}}>
+              {err?'❌ كلمة مرور خاطئة':'دخول ←'}
+            </button>
+          </div>
+        </div>
+
+        <div style={{textAlign:'center',marginTop:24,fontSize:11,color:'rgba(148,163,184,.3)'}}>
+          محل العدالة للهواتف والاكسسوارات — 2025
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════════
+   ADMIN SHELL
+══════════════════════════════════════════════ */
+function AdminApp({products,setProducts,customers,setCustomers,invoices,setInvoices,lowStockProds,totalInventoryValue,deductStock,onLogout,adminPass,setAdminPass,dbReady,deleteProduct,deleteCustomer,deleteInvoiceFb}){
+  const isMob=useIsMobile();
+  const[tab,setTab]=useState('dashboard');
+  const[showNotif,setShowNotif]=useState(false);
+  const[printContent,setPrintContent]=useState(null);
+
+  function handlePrint(inv){
+    setPrintContent(inv);
+    setTimeout(()=>{
+      const pz=document.getElementById('print-zone');
+      if(pz)pz.style.display='block';
+      window.print();
+      setTimeout(()=>{if(pz)pz.style.display='none';setPrintContent(null);},500);
+    },150);
+  }
+
+  const TABS=[
+    {id:'dashboard',label:'لوحة القيادة',icon:'📊'},
+    {id:'products',label:'المنتجات',icon:'📦'},
+    {id:'customers',label:'العملاء',icon:'👥'},
+    {id:'invoice',label:'فاتورة جديدة',icon:'🧾'},
+    {id:'saved',label:'سجل الفواتير',icon:'📋'},
+    {id:'settings',label:'الإعدادات',icon:'⚙️'},
+  ];
+
+  return(
+    <div style={{height:'100vh',background:'linear-gradient(160deg,#060a14,#0a1628,#060d1e)',display:'flex',overflow:'hidden'}}>
+      {/* SIDEBAR */}
+      <aside className='no-print sidebar-desktop' style={{width:220,background:'rgba(0,0,0,.25)',borderLeft:'1px solid rgba(255,255,255,.06)',display:'flex',flexDirection:'column',padding:'18px 10px',flexShrink:0,height:'100vh',overflowY:'auto',flexShrink:0}}>
+        <div style={{display:'flex',alignItems:'center',gap:9,marginBottom:26,padding:'0 4px'}}>
+          <div style={{width:34,height:34,borderRadius:10,background:'linear-gradient(135deg,#3b82f6,#8b5cf6)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:15}}>⚡</div>
+          <div>
+            <div style={{fontSize:13,fontWeight:900,color:'#e2e8f0'}}>العدالة</div>
+            <div style={{fontSize:9,color:'rgba(148,163,184,.45)',letterSpacing:.5}}>لوحة الإدارة</div>
+          </div>
+        </div>
+
+        {TABS.map(t=>(
+          <button key={t.id} className={`nav-link ${tab===t.id?'active':''}`} onClick={()=>setTab(t.id)} style={{justifyContent:'space-between'}}>
+            <div style={{display:'flex',alignItems:'center',gap:7}}>
+              <span style={{fontSize:15}}>{t.icon}</span>{t.label}
+            </div>
+            {t.id==='saved'&&invoices.length>0&&(
+              <span style={{background:'rgba(167,139,250,.3)',color:'#a78bfa',borderRadius:50,minWidth:20,height:20,display:'inline-flex',alignItems:'center',justifyContent:'center',fontSize:10,fontWeight:900}}>{invoices.length}</span>
+            )}
+          </button>
+        ))}
+
+        {/* Total Value Widget */}
+        <div style={{margin:'16px 4px 4px',background:'linear-gradient(135deg,rgba(99,179,237,.1),rgba(167,139,250,.1))',border:'1px solid rgba(99,179,237,.2)',borderRadius:14,padding:'12px 14px'}}>
+          <div style={{fontSize:10,color:'rgba(148,163,184,.6)',marginBottom:4,fontWeight:600}}>💰 إجمالي قيمة المخزون</div>
+          <div style={{fontSize:16,fontWeight:900,color:'#63b3ed',direction:'ltr',textAlign:'right'}}>{fmtPrice(totalInventoryValue)}</div>
+          <div style={{fontSize:10,color:'rgba(148,163,184,.45)',marginTop:2}}>أوقية موريتانية</div>
+        </div>
+
+        {/* Sync status */}
+        <div style={{margin:'8px 4px 0',display:'flex',alignItems:'center',gap:7,padding:'7px 11px',borderRadius:10,background:dbReady?'rgba(52,211,153,.07)':'rgba(251,191,36,.07)',border:dbReady?'1px solid rgba(52,211,153,.18)':'1px solid rgba(251,191,36,.2)'}}>
+          <span style={{width:8,height:8,borderRadius:'50%',background:dbReady?'#34d399':'#fbbf24',flexShrink:0,boxShadow:dbReady?'0 0 6px #34d399':'0 0 6px #fbbf24'}}/>
+          <span style={{fontSize:11,fontWeight:600,color:dbReady?'#34d399':'#fbbf24'}}>{dbReady?'Firebase متصل':'جاري الاتصال...'}</span>
+        </div>
+
+        <div style={{marginTop:'auto',borderTop:'1px solid rgba(255,255,255,.06)',paddingTop:12}}>
+          {/* Notif bell */}
+          <button className='nav-link btn' onClick={()=>setShowNotif(true)} style={{width:'100%',justifyContent:'space-between',marginBottom:4}}>
+            <div style={{display:'flex',alignItems:'center',gap:7}}><span style={{fontSize:15}}>🔔</span>تنبيهات المخزون</div>
+            {lowStockProds.length>0&&(
+              <span className='pulse' style={{background:'#ef4444',color:'#fff',borderRadius:50,minWidth:20,height:20,display:'flex',alignItems:'center',justifyContent:'center',fontSize:10,fontWeight:900}}>{lowStockProds.length}</span>
+            )}
+          </button>
+          <button className='nav-link btn' onClick={onLogout} style={{width:'100%',color:'rgba(248,113,113,.7)'}}>
+            <span style={{fontSize:15}}>🚪</span>تسجيل خروج
+          </button>
+        </div>
+      </aside>
+
+      {/* MAIN */}
+      <main style={{flex:1,minWidth:0,display:'flex',flexDirection:'column'}}><div className='admin-main' style={{flex:1,overflowY:'auto',overflowX:'hidden',padding:isMob?'14px 12px 84px':'26px 22px'}}>
+        {tab==='dashboard'&&<DashboardTab products={products} invoices={invoices} totalInventoryValue={totalInventoryValue} lowStockProds={lowStockProds} setTab={setTab}/>}
+        {tab==='products'&&<ProductsTab products={products} setProducts={setProducts} deleteProduct={deleteProduct}/>}
+        {tab==='customers'&&<CustomersTab customers={customers} setCustomers={setCustomers} deleteCustomer={deleteCustomer}/>}
+        {tab==='invoice'&&<InvoiceTab products={products} setProducts={setProducts} customers={customers} setInvoices={setInvoices} deductStock={deductStock} handlePrint={handlePrint}/>}
+        {tab==='saved'&&<SavedInvoicesTab invoices={invoices} setInvoices={setInvoices} handlePrint={handlePrint} products={products} customers={customers} deleteInvoiceFb={deleteInvoiceFb}/>}
+        {tab==='settings'&&<SettingsTab adminPass={adminPass} setAdminPass={setAdminPass}/>}
+      </div></main>
+
+      {/* MOBILE BOTTOM NAV */}
+      <nav className='bottom-nav no-print' style={{position:'fixed',bottom:0,left:0,right:0,background:'rgba(6,10,20,.97)',borderTop:'1px solid rgba(255,255,255,.09)',zIndex:1000,padding:'6px 0 env(safe-area-inset-bottom,6px)',backdropFilter:'blur(20px)'}}>
+        <div style={{display:'flex',justifyContent:'space-around',alignItems:'center'}}>
+          {TABS.map(t=>(
+            <button key={t.id} className='btn' onClick={()=>setTab(t.id)}
+              style={{display:'flex',flexDirection:'column',alignItems:'center',gap:2,padding:'5px 8px',background:'none',border:'none',color:tab===t.id?'#63b3ed':'rgba(148,163,184,.45)',minWidth:46,position:'relative'}}>
+              <span style={{fontSize:20,lineHeight:1}}>{t.icon}</span>
+              <span style={{fontSize:9,fontWeight:700,whiteSpace:'nowrap'}}>{t.label.split(' ')[0]}</span>
+              {t.id==='saved'&&invoices.length>0&&(
+                <span style={{position:'absolute',top:2,right:4,background:'#a78bfa',color:'#fff',borderRadius:50,minWidth:15,height:15,display:'inline-flex',alignItems:'center',justifyContent:'center',fontSize:9,fontWeight:900}}>{invoices.length}</span>
+              )}
+              {tab===t.id&&<span style={{position:'absolute',bottom:-6,left:'50%',transform:'translateX(-50%)',width:20,height:3,borderRadius:2,background:'#63b3ed'}}/>}
+            </button>
+          ))}
+          <button className='btn' onClick={()=>setShowNotif(true)}
+            style={{display:'flex',flexDirection:'column',alignItems:'center',gap:2,padding:'5px 8px',background:'none',border:'none',color:'rgba(148,163,184,.45)',minWidth:46,position:'relative'}}>
+            <span style={{fontSize:20,lineHeight:1}}>🔔</span>
+            <span style={{fontSize:9,fontWeight:700}}>تنبيه</span>
+            {lowStockProds.length>0&&(
+              <span className='pulse' style={{position:'absolute',top:2,right:4,background:'#ef4444',color:'#fff',borderRadius:50,minWidth:15,height:15,display:'flex',alignItems:'center',justifyContent:'center',fontSize:9,fontWeight:900}}>{lowStockProds.length}</span>
+            )}
+          </button>
+        </div>
+      </nav>
+
+      {/* LOW STOCK MODAL */}}
+      {showNotif&&(
+        <Overlay onClose={()=>setShowNotif(false)}>
+          <div className='pop-in' onClick={e=>e.stopPropagation()} style={{background:'#0d1525',border:'1px solid rgba(239,68,68,.25)',borderRadius:22,padding:24,width:'100%',maxWidth:500,maxHeight:'82vh',display:'flex',flexDirection:'column',boxShadow:'0 24px 60px rgba(0,0,0,.65)'}}>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:16}}>
+              <div style={{fontSize:15,fontWeight:900,color:'#f87171',display:'flex',alignItems:'center',gap:8}}><span className='pulse'>🔴</span> منتجات على وشك النفاذ ({lowStockProds.length})</div>
+              <Xbtn onClick={()=>setShowNotif(false)}/>
+            </div>
+            <div style={{overflowY:'auto',display:'flex',flexDirection:'column',gap:8}}>
+              {lowStockProds.length===0?(
+                <div style={{textAlign:'center',padding:'32px 0',color:'rgba(148,163,184,.4)'}}>✅ جميع المنتجات بمخزون كافٍ</div>
+              ):lowStockProds.map(p=>(
+                <div key={p.id} style={{background:'rgba(239,68,68,.06)',border:'1px solid rgba(239,68,68,.15)',borderRadius:12,padding:'11px 14px',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                  <div style={{display:'flex',alignItems:'center',gap:10}}>
+                    <span style={{fontSize:20}}>{getEmoji(p)}</span>
+                    <div>
+                      <div style={{fontSize:13,fontWeight:700,color:'#e2e8f0'}}>{p.name}</div>
+                      <div style={{fontSize:11,color:'rgba(148,163,184,.5)'}}>حد التنبيه: {p.lowStock}</div>
+                    </div>
+                  </div>
+                  <div style={{textAlign:'left'}}>
+                    <div style={{fontSize:18,fontWeight:900,color:p.qty===0?'#ef4444':'#fbbf24',direction:'ltr'}}>{p.qty}</div>
+                    <div style={{fontSize:10,color:p.qty===0?'#f87171':'#fcd34d'}}>{p.qty===0?'نفذ المخزون':'منخفض'}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </Overlay>
+      )}
+
+      {/* PRINT ZONE */}
+      {printContent&&(
+        <div id='print-zone' style={{display:'none'}}>
+          <PrintableInvoice inv={printContent}/>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════════
+   DASHBOARD
+══════════════════════════════════════════════ */
+function DashboardTab({products,invoices,totalInventoryValue,lowStockProds,setTab}){
+  const totalQty=products.reduce((s,p)=>s+p.qty,0);
+  const invTotal=invoices.reduce((s,i)=>s+i.total,0);
+
+  const topProds=useMemo(()=>[...products].sort((a,b)=>(b.price*b.qty)-(a.price*a.qty)).slice(0,5),[products]);
+  const catStats=useMemo(()=>{
+    const m={};
+    products.forEach(p=>{m[p.category]=(m[p.category]||0)+p.price*p.qty});
+    return Object.entries(m).sort((a,b)=>b[1]-a[1]).slice(0,6);
+  },[products]);
+
+  const STATS=[
+    {l:'إجمالي المخزون',v:fmtPrice(totalInventoryValue)+' أوق',i:'💰',c:'#63b3ed',s:fmt(totalQty)+' قطعة'},
+    {l:'عدد الأصناف',v:fmt(products.length),i:'📦',c:'#34d399',s:'صنف مختلف'},
+    {l:'فواتير صادرة',v:fmt(invoices.length),i:'🧾',c:'#a78bfa',s:fmtPrice(invTotal)+' أوق'},
+    {l:'منتجات منخفضة',v:fmt(lowStockProds.length),i:'⚠️',c:'#fbbf24',s:'تحتاج تجديد',alert:lowStockProds.length>0},
+  ];
+
+  return(
+    <div className='fade-up'>
+      <div style={{marginBottom:22}}>
+        <h1 style={{fontSize:22,fontWeight:900,color:'#e2e8f0',marginBottom:3}}>لوحة القيادة 📊</h1>
+        <div style={{fontSize:12,color:'rgba(148,163,184,.55)'}}>{todayStr()}</div>
+      </div>
+
+      <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(145px,1fr))',gap:10,marginBottom:20}}>
+        {STATS.map(s=>(
+          <div key={s.l} className='card' style={{padding:17,borderColor:s.alert?'rgba(251,191,36,.3)':undefined,background:s.alert?'rgba(251,191,36,.03)':undefined}}>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:10}}>
+              <div style={{fontSize:26}}>{s.i}</div>
+              {s.alert&&<span style={{background:'rgba(239,68,68,.15)',color:'#f87171',borderRadius:50,padding:'2px 8px',fontSize:10,fontWeight:700}}>تنبيه</span>}
+            </div>
+            <div style={{fontSize:20,fontWeight:900,color:s.c,direction:'ltr',textAlign:'right',marginBottom:2}}>{s.v}</div>
+            <div style={{fontSize:11,color:'rgba(148,163,184,.55)'}}>{s.l}</div>
+            <div style={{fontSize:10,color:'rgba(148,163,184,.35)',marginTop:2}}>{s.s}</div>
+          </div>
+        ))}
+      </div>
+
+      <div className='mob-grid1' style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14,marginBottom:14}}>
+        <div className='card' style={{padding:16}}>
+          <div style={{fontSize:13,fontWeight:800,color:'#e2e8f0',marginBottom:12}}>🏆 أعلى المنتجات قيمةً</div>
+          {topProds.map((p,i)=>{
+            const col=CAT_COLORS[p.category]||'#94a3b8';
+            const pct=totalInventoryValue>0?Math.round((p.price*p.qty/totalInventoryValue)*100):0;
+            return(
+              <div key={p.id} style={{marginBottom:11}}>
+                <div style={{display:'flex',justifyContent:'space-between',marginBottom:3,gap:6}}>
+                  <div style={{fontSize:12,fontWeight:600,color:'#e2e8f0',flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{i+1}. {p.name}</div>
+                  <div style={{fontSize:12,fontWeight:800,color:col,whiteSpace:'nowrap',direction:'ltr'}}>{fmtPrice(p.price*p.qty)}</div>
+                </div>
+                <div style={{height:4,background:'rgba(255,255,255,.06)',borderRadius:3}}>
+                  <div style={{height:'100%',background:`linear-gradient(90deg,${col},${col}77)`,borderRadius:3,width:pct+'%'}}/>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        <div className='card' style={{padding:16}}>
+          <div style={{fontSize:13,fontWeight:800,color:'#e2e8f0',marginBottom:12}}>🗂️ توزيع القيمة بالفئات</div>
+          {catStats.map(([cat,val])=>{
+            const col=CAT_COLORS[cat]||'#94a3b8';
+            const pct=totalInventoryValue>0?Math.round((val/totalInventoryValue)*100):0;
+            return(
+              <div key={cat} style={{display:'flex',alignItems:'center',gap:9,marginBottom:9}}>
+                <span style={{fontSize:14}}>{CAT_ICONS[cat]||'📦'}</span>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{display:'flex',justifyContent:'space-between',marginBottom:2}}>
+                    <span style={{fontSize:11,color:'#e2e8f0',fontWeight:600,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{cat}</span>
+                    <span style={{fontSize:11,color:col,fontWeight:700,direction:'ltr',marginRight:4}}>{pct}%</span>
+                  </div>
+                  <div style={{height:4,background:'rgba(255,255,255,.06)',borderRadius:3}}>
+                    <div style={{height:'100%',background:col,borderRadius:3,width:pct+'%'}}/>
+                  </div>
+                </div>
+                <div style={{fontSize:10,color:'rgba(148,163,184,.45)',whiteSpace:'nowrap',direction:'ltr',minWidth:70,textAlign:'left'}}>{fmtPrice(val)}</div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {lowStockProds.length>0&&(
+        <div className='card' style={{padding:16,borderColor:'rgba(251,191,36,.2)',background:'rgba(251,191,36,.02)'}}>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10}}>
+            <div style={{fontSize:13,fontWeight:800,color:'#fbbf24'}}>⚠️ تنبيه: منتجات تحتاج تجديد</div>
+            <button className='btn' onClick={()=>setTab('products')} style={{fontSize:12,color:'#63b3ed',background:'none',border:'none',fontFamily:'Cairo,sans-serif'}}>إدارة المنتجات ←</button>
+          </div>
+          <div style={{display:'flex',flexWrap:'wrap',gap:7}}>
+            {lowStockProds.slice(0,10).map(p=>(
+              <span key={p.id} className='tag' style={{background:'rgba(251,191,36,.1)',color:'#fbbf24',border:'1px solid rgba(251,191,36,.25)'}}>
+                {getEmoji(p)} {p.name.length>18?p.name.slice(0,18)+'...':p.name} (<span style={{direction:'ltr'}}>{p.qty}</span>)
+              </span>
+            ))}
+            {lowStockProds.length>10&&<span className='tag' style={{background:'rgba(255,255,255,.05)',color:'rgba(148,163,184,.5)'}}>+{lowStockProds.length-10}</span>}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════════
+   PRODUCTS TAB
+══════════════════════════════════════════════ */
+function ProductsTab({products,setProducts,deleteProduct}){
+  const[search,setSearch]=useState('');
+  const[catF,setCatF]=useState('الكل');
+  const[sortBy,setSortBy]=useState('name');
+  const[showAdd,setShowAdd]=useState(false);
+  const[editP,setEditP]=useState(null);
+  const[addStockVal,setAddStockVal]=useState('');
+  const[form,setForm]=useState({name:'',price:'',qty:'',category:'شواحن',lowStock:'5'});
+
+  const fSet=k=>e=>setForm(f=>({...f,[k]:e.target.value}));
+
+  function addProduct(){
+    const pName=form.name.trim();
+    const pPrice=parseFloat(form.price)||0;
+    const pQty=parseInt(form.qty)||0;
+    if(!pName||!pPrice||!pQty)return;
+    setProducts(prev=>[{id:genId(),name:pName,price:pPrice,qty:pQty,category:form.category,lowStock:parseInt(form.lowStock)||5},...prev]);
+    setForm({name:'',price:'',qty:'',category:'شواحن',lowStock:'5'});
+    setShowAdd(false);
+  }
+
+  function saveEdit(){
+    const cleaned={...editP,
+      price:parseFloat(editP.price)||0,
+      qty:parseInt(editP.qty)||0,
+      lowStock:parseInt(editP.lowStock)||1
+    };
+    setProducts(prev=>prev.map(p=>p.id===cleaned.id?cleaned:p));
+    setEditP(null);setAddStockVal('');
+  }
+
+  function doAddStock(){
+    const v=parseInt(addStockVal)||0;
+    if(v<1)return;
+    setEditP(p=>({...p,qty:(parseInt(p.qty)||0)+v}));
+    setAddStockVal('');
+  }
+
+  const filtered=useMemo(()=>{
+    let r=products.filter(p=>{
+      const mc=catF==='الكل'||p.category===catF;
+      const ms=p.name.toLowerCase().includes(search.toLowerCase());
+      return mc&&ms;
+    });
+    if(sortBy==='price-desc')r=[...r].sort((a,b)=>b.price-a.price);
+    else if(sortBy==='qty-asc')r=[...r].sort((a,b)=>a.qty-b.qty);
+    else if(sortBy==='value-desc')r=[...r].sort((a,b)=>(b.price*b.qty)-(a.price*a.qty));
+    else r=[...r].sort((a,b)=>a.name.localeCompare(b.name,'ar'));
+    return r;
+  },[products,search,catF,sortBy]);
+
+  const totalVal=useMemo(()=>filtered.reduce((s,p)=>s+p.price*p.qty,0),[filtered]);
+
+  return(
+    <div className='fade-up'>
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:18,flexWrap:'wrap',gap:10}}>
+        <div>
+          <h1 style={{fontSize:21,fontWeight:900,color:'#e2e8f0',marginBottom:3}}>المنتجات 📦</h1>
+          <div style={{fontSize:12,color:'rgba(148,163,184,.55)'}}>
+            <span style={{direction:'ltr',display:'inline-block'}}>{fmt(filtered.length)}</span> منتج | القيمة: <strong style={{color:'#63b3ed',direction:'ltr',display:'inline-block'}}>{fmtPrice(totalVal)}</strong> أوقية
+          </div>
+        </div>
+        <button className='btn' onClick={()=>setShowAdd(true)} style={{background:'linear-gradient(135deg,#3b82f6,#8b5cf6)',border:'none',borderRadius:12,padding:'10px 18px',color:'#fff',fontWeight:700,fontSize:13,display:'flex',alignItems:'center',gap:7,boxShadow:'0 4px 14px rgba(59,130,246,.3)'}}>
+          <span style={{fontSize:17}}>+</span> إضافة منتج
+        </button>
+      </div>
+
+      {/* Filters */}
+      <div style={{display:'flex',gap:9,marginBottom:13,flexWrap:'wrap'}}>
+        <div style={{position:'relative',flex:1,minWidth:160}}>
+          <span style={{position:'absolute',right:11,top:'50%',transform:'translateY(-50%)',color:'rgba(148,163,184,.45)',fontSize:13}}>🔍</span>
+          <input className='inp' placeholder='بحث...' value={search} onChange={e=>setSearch(e.target.value)} style={{paddingRight:33,fontSize:13}}/>
+        </div>
+        <select className='inp' value={catF} onChange={e=>setCatF(e.target.value)} style={{width:'auto',fontSize:13}}>
+          <option value='الكل'>كل الفئات</option>
+          {CATEGORIES.map(c=><option key={c} value={c}>{c}</option>)}
+        </select>
+        <select className='inp' value={sortBy} onChange={e=>setSortBy(e.target.value)} style={{width:'auto',fontSize:13}}>
+          <option value='name'>اسم ↑</option>
+          <option value='price-desc'>سعر ↓</option>
+          <option value='qty-asc'>كمية ↑</option>
+          <option value='value-desc'>قيمة ↓</option>
+        </select>
+      </div>
+
+      {/* Cat pills */}
+      <div style={{display:'flex',gap:6,marginBottom:15,overflowX:'auto',paddingBottom:4}}>
+        {['الكل',...CATEGORIES].map(c=>{
+          const col=CAT_COLORS[c]||'#63b3ed';
+          const a=c===catF;
+          return(
+            <button key={c} className='btn' onClick={()=>setCatF(c)} style={{padding:'5px 12px',borderRadius:50,border:a?`1px solid ${col}`:'1px solid rgba(255,255,255,.09)',background:a?`${col}1a`:'rgba(255,255,255,.03)',color:a?col:'rgba(148,163,184,.65)',fontSize:12,fontWeight:600,whiteSpace:'nowrap'}}>
+              {CAT_ICONS[c]||'📦'} {c}
+            </button>
+          );
+        })}
+      </div>
+
+      <div className='card'>
+        <div style={{overflowX:'auto'}}>
+          <table style={{width:'100%',borderCollapse:'collapse',fontSize:13}}>
+            <thead>
+              <tr style={{borderBottom:'1px solid rgba(255,255,255,.07)',background:'rgba(255,255,255,.02)'}}>
+                {['المنتج','الفئة','الكمية','سعر الشراء','القيمة','الحالة',''].map(h=>(
+                  <th key={h} style={{padding:'9px 13px',textAlign:'right',color:'rgba(148,163,184,.55)',fontWeight:600,fontSize:11,whiteSpace:'nowrap'}}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map(p=>{
+                const col=CAT_COLORS[p.category]||'#94a3b8';
+                const isLow=p.qty>0&&p.qty<=p.lowStock;
+                const isOut=p.qty===0;
+                return(
+                  <tr key={p.id} style={{borderBottom:'1px solid rgba(255,255,255,.04)',background:isOut?'rgba(239,68,68,.03)':isLow?'rgba(251,191,36,.02)':'transparent',transition:'background .15s'}}
+                    onMouseEnter={e=>e.currentTarget.style.background='rgba(255,255,255,.025)'}
+                    onMouseLeave={e=>e.currentTarget.style.background=isOut?'rgba(239,68,68,.03)':isLow?'rgba(251,191,36,.02)':'transparent'}>
+                    <td style={{padding:'10px 13px'}}>
+                      <div style={{display:'flex',alignItems:'center',gap:7}}>
+                        <span style={{fontSize:17}}>{getEmoji(p)}</span>
+                        <span style={{fontWeight:600,color:'#e2e8f0'}}>{p.name}</span>
+                      </div>
+                    </td>
+                    <td style={{padding:'10px 13px'}}>
+                      <span className='tag' style={{background:`${col}14`,color:col,border:`1px solid ${col}22`}}>{CAT_ICONS[p.category]||'📦'} {p.category}</span>
+                    </td>
+                    <td style={{padding:'10px 13px',fontWeight:700,color:isOut?'#f87171':isLow?'#fbbf24':'#e2e8f0',direction:'ltr',textAlign:'left'}}>{fmt(p.qty)}</td>
+                    <td style={{padding:'10px 13px',color:'#e2e8f0',direction:'ltr',textAlign:'left'}}>{fmtPrice(p.price)} أوق</td>
+                    <td style={{padding:'10px 13px',fontWeight:700,color:'#63b3ed',direction:'ltr',textAlign:'left'}}>{fmtPrice(p.price*p.qty)} أوق</td>
+                    <td style={{padding:'10px 13px'}}>
+                      {isOut?<span className='tag' style={{background:'rgba(239,68,68,.14)',color:'#f87171',border:'1px solid rgba(239,68,68,.22)'}}>🔴 نفذ</span>
+                      :isLow?<span className='tag' style={{background:'rgba(251,191,36,.11)',color:'#fbbf24',border:'1px solid rgba(251,191,36,.22)'}}>⚠️ منخفض</span>
+                      :<span className='tag' style={{background:'rgba(52,211,153,.09)',color:'#34d399',border:'1px solid rgba(52,211,153,.18)'}}>✅ متوفر</span>}
+                    </td>
+                    <td style={{padding:'10px 13px'}}>
+                      <button className='btn' onClick={()=>{setEditP({...p});setAddStockVal('');}} style={{padding:'5px 10px',background:'rgba(99,179,237,.11)',border:'1px solid rgba(99,179,237,.2)',borderRadius:8,color:'#63b3ed',fontSize:12,fontWeight:600}}>✏️ تعديل</button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* ADD PRODUCT MODAL */}
+      {showAdd&&(
+        <Modal onClose={()=>setShowAdd(false)} title='➕ إضافة منتج جديد'>
+          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:11,marginBottom:12}}>
+            <div style={{gridColumn:'1/-1'}}>
+              <Lbl>اسم المنتج *</Lbl>
+              <input className='inp' placeholder='اسم المنتج...' value={form.name} onChange={fSet('name')} onKeyDown={e=>e.key==='Enter'&&addProduct()}/>
+            </div>
+            <div>
+              <Lbl>سعر الشراء (أوقية) *</Lbl>
+              <input className='inp' inputMode='numeric' placeholder='0' value={form.price} onChange={fSet('price')}/>
+            </div>
+            <div>
+              <Lbl>الكمية *</Lbl>
+              <input className='inp' inputMode='numeric' placeholder='0' value={form.qty} onChange={fSet('qty')}/>
+            </div>
+            <div>
+              <Lbl>الفئة</Lbl>
+              <select className='inp' value={form.category} onChange={fSet('category')}>
+                {CATEGORIES.map(c=><option key={c} value={c}>{CAT_ICONS[c]} {c}</option>)}
+              </select>
+            </div>
+            <div>
+              <Lbl>حد تنبيه المخزون</Lbl>
+              <input className='inp' inputMode='numeric' placeholder='5' value={form.lowStock} onChange={fSet('lowStock')}/>
+            </div>
+          </div>
+          <Btn onClick={addProduct} disabled={!form.name.trim()||!form.price||!form.qty}>✓ إضافة المنتج</Btn>
+        </Modal>
+      )}
+
+      {/* EDIT PRODUCT MODAL */}
+      {editP&&(
+        <Modal onClose={()=>{setEditP(null);setAddStockVal('');}} title='✏️ تعديل المنتج'>
+          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:11,marginBottom:14}}>
+            <div style={{gridColumn:'1/-1'}}>
+              <Lbl>اسم المنتج</Lbl>
+              <input className='inp' value={editP.name} onChange={e=>setEditP(p=>({...p,name:e.target.value}))}/>
+            </div>
+            <div>
+              <Lbl>سعر الشراء (أوقية)</Lbl>
+              <input className='inp' inputMode='numeric' value={editP.price} onChange={e=>setEditP(p=>({...p,price:e.target.value}))}/>
+            </div>
+            <div>
+              <Lbl>الكمية الحالية</Lbl>
+              <input className='inp' inputMode='numeric' value={editP.qty} onChange={e=>setEditP(p=>({...p,qty:e.target.value}))}/>
+            </div>
+            <div>
+              <Lbl>الفئة</Lbl>
+              <select className='inp' value={editP.category} onChange={e=>setEditP(p=>({...p,category:e.target.value}))}>
+                {CATEGORIES.map(c=><option key={c} value={c}>{CAT_ICONS[c]} {c}</option>)}
+              </select>
+            </div>
+            <div>
+              <Lbl>حد التنبيه</Lbl>
+              <input className='inp' inputMode='numeric' value={editP.lowStock} onChange={e=>setEditP(p=>({...p,lowStock:e.target.value}))}/>
+            </div>
+            <div style={{gridColumn:'1/-1'}}>
+              <Lbl>إضافة كمية وصلت حديثاً 📦</Lbl>
+              <div style={{display:'flex',gap:8}}>
+                <input className='inp' inputMode='numeric' placeholder='كمية وصلت...' value={addStockVal} onChange={e=>setAddStockVal(e.target.value)} onKeyDown={e=>e.key==='Enter'&&doAddStock()} style={{flex:1}}/>
+                <button className='btn' onClick={doAddStock} style={{padding:'10px 16px',background:'linear-gradient(135deg,#059669,#10b981)',border:'none',borderRadius:11,color:'#fff',fontWeight:700,fontSize:13,whiteSpace:'nowrap',boxShadow:'0 3px 10px rgba(5,150,105,.3)'}}>+ إضافة</button>
+              </div>
+              <div style={{fontSize:11,color:'rgba(148,163,184,.45)',marginTop:5}}>الكمية الحالية ستصبح: <strong style={{color:'#34d399',direction:'ltr',display:'inline-block'}}>{fmt((parseInt(editP.qty)||0)+(parseInt(addStockVal)||0))}</strong></div>
+            </div>
+          </div>
+          <Btn onClick={saveEdit}>💾 حفظ التعديلات</Btn>
+        </Modal>
+      )}
+    </div>
+  );
+}
+
+
+/* ══════════════════════════════════════════════
+   SAVED INVOICES TAB
+══════════════════════════════════════════════ */
+function SavedInvoicesTab({invoices,setInvoices,handlePrint,products,customers,deleteInvoiceFb}){
+  const[sel,setSel]=useState(null);
+  const[search,setSearch]=useState('');
+  const[editInv,setEditInv]=useState(null); // invoice being edited
+  const[delId,setDelId]=useState(null);
+
+  const filtered=invoices.filter(inv=>
+    inv.num.includes(search)||
+    inv.customer.name.includes(search)||
+    inv.date.includes(search)
+  );
+
+  function saveInvoiceEdit(){
+    if(!editInv)return;
+    const subtotal=editInv.lines.reduce((s,l)=>s+l.sellPrice*l.qty,0);
+    const discAmt=Math.round(subtotal*(editInv.discount/100));
+    const total=subtotal-discAmt;
+    const updated={...editInv,subtotal,discAmt,total};
+    setInvoices(prev=>prev.map(i=>i.id===updated.id?updated:i));
+    setSel(updated);
+    setEditInv(null);
+  }
+
+  function deleteInvoice(id){
+    if(deleteInvoiceFb){ deleteInvoiceFb(id); }
+    else{ setInvoices(prev=>prev.filter(i=>i.id!==id)); }
+    setDelId(null);setSel(null);
+  }
+
+  return(
+    <div className='fade-up'>
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:18,flexWrap:'wrap',gap:10}}>
+        <div>
+          <h1 style={{fontSize:21,fontWeight:900,color:'#e2e8f0',marginBottom:3}}>سجل الفواتير 📋</h1>
+          <div style={{fontSize:12,color:'rgba(148,163,184,.55)'}}>
+            {fmt(invoices.length)} فاتورة | إجمالي: <strong style={{color:'#a78bfa',direction:'ltr',display:'inline-block'}}>{fmtPrice(invoices.reduce((s,i)=>s+i.total,0))}</strong> أوق
+          </div>
+        </div>
+        <div style={{position:'relative',width:'min(220px,100%)'}}>
+          <span style={{position:'absolute',right:11,top:'50%',transform:'translateY(-50%)',color:'rgba(148,163,184,.4)',fontSize:13}}>🔍</span>
+          <input className='inp' placeholder='بحث برقم أو عميل...' value={search} onChange={e=>setSearch(e.target.value)} style={{paddingRight:33,fontSize:13}}/>
+        </div>
+      </div>
+
+      {invoices.length===0?(
+        <div style={{textAlign:'center',padding:'80px 0',color:'rgba(148,163,184,.3)'}}>
+          <div style={{fontSize:52,marginBottom:12}}>📋</div>
+          <div style={{fontSize:16,fontWeight:700}}>لا توجد فواتير بعد</div>
+          <div style={{fontSize:12,marginTop:5}}>الفواتير ستظهر هنا بعد إنشائها</div>
+        </div>
+      ):(
+        <div style={{display:'flex',flexDirection:'column',gap:10}}>
+          {filtered.map(inv=>{
+            const c=inv.customer;
+            return(
+              <div key={inv.id} className='card' style={{padding:'14px 18px',display:'flex',alignItems:'center',gap:14,flexWrap:'wrap'}}>
+                <div style={{width:42,height:42,borderRadius:12,background:`${c.color}18`,border:`2px solid ${c.color}40`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:20,flexShrink:0,cursor:'pointer'}} onClick={()=>setSel(inv)}>{c.avatar}</div>
+                <div style={{flex:1,minWidth:140,cursor:'pointer'}} onClick={()=>setSel(inv)}>
+                  <div style={{fontWeight:800,color:'#e2e8f0',fontSize:14,marginBottom:2}}>{c.name}</div>
+                  <div style={{fontSize:11,color:'rgba(148,163,184,.5)',direction:'ltr',display:'inline-block'}}>{inv.num}</div>
+                  <span style={{fontSize:11,color:'rgba(148,163,184,.4)',marginRight:8}}>{inv.date}</span>
+                </div>
+                <div style={{textAlign:'center',minWidth:60,cursor:'pointer'}} onClick={()=>setSel(inv)}>
+                  <div style={{fontSize:18,fontWeight:900,color:'#63b3ed',direction:'ltr'}}>{fmt(inv.lines.length)}</div>
+                  <div style={{fontSize:10,color:'rgba(148,163,184,.4)'}}>صنف</div>
+                </div>
+                {inv.discount>0&&<div style={{background:'rgba(251,191,36,.12)',border:'1px solid rgba(251,191,36,.22)',borderRadius:8,padding:'4px 9px',fontSize:11,fontWeight:700,color:'#fbbf24'}}>خصم {inv.discount}%</div>}
+                <div style={{textAlign:'left',minWidth:100,cursor:'pointer'}} onClick={()=>setSel(inv)}>
+                  <div style={{fontSize:17,fontWeight:900,color:'#34d399',direction:'ltr'}}>{fmtPrice(inv.total)}</div>
+                  <div style={{fontSize:10,color:'rgba(148,163,184,.4)'}}>أوقية</div>
+                </div>
+                <div style={{display:'flex',gap:6,flexShrink:0}}>
+                  <button className='btn' onClick={()=>{setEditInv({...inv,lines:inv.lines.map(l=>({...l})),discount:inv.discount});}}
+                    style={{padding:'6px 11px',background:'rgba(251,191,36,.12)',border:'1px solid rgba(251,191,36,.22)',borderRadius:8,color:'#fbbf24',fontSize:12,fontWeight:700}}>✏️ تعديل</button>
+                  <button className='btn' onClick={()=>handlePrint(inv)}
+                    style={{padding:'6px 11px',background:'rgba(99,179,237,.12)',border:'1px solid rgba(99,179,237,.2)',borderRadius:8,color:'#63b3ed',fontSize:12,fontWeight:700}}>🖨️ طباعة</button>
+                  <button className='btn' onClick={()=>setDelId(inv.id)}
+                    style={{padding:'6px 11px',background:'rgba(239,68,68,.1)',border:'1px solid rgba(239,68,68,.2)',borderRadius:8,color:'#f87171',fontSize:12,fontWeight:700}}>🗑️</button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* VIEW DETAIL MODAL */}
+      {sel&&!editInv&&(
+        <Modal onClose={()=>setSel(null)} title={`فاتورة ${sel.num} — ${sel.customer.name}`} maxW={560}>
+          <div style={{marginBottom:14}}>
+            <div style={{display:'flex',justifyContent:'space-between',fontSize:12,color:'rgba(148,163,184,.6)',marginBottom:12}}>
+              <span>📅 {sel.date}</span><span style={{direction:'ltr'}}>{sel.num}</span>
+            </div>
+            <div style={{overflowX:'auto',marginBottom:14}}>
+              <table style={{width:'100%',borderCollapse:'collapse',fontSize:12}}>
+                <thead>
+                  <tr style={{borderBottom:'1px solid rgba(255,255,255,.08)',background:'rgba(255,255,255,.02)'}}>
+                    {['المنتج','الكمية','سعر البيع','الإجمالي'].map(h=>(
+                      <th key={h} style={{padding:'7px 10px',textAlign:'right',color:'rgba(148,163,184,.5)',fontWeight:600,fontSize:11}}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {sel.lines.map(l=>(
+                    <tr key={l.id} style={{borderBottom:'1px solid rgba(255,255,255,.04)'}}>
+                      <td style={{padding:'8px 10px',color:'#e2e8f0',fontWeight:600}}>{l.name}</td>
+                      <td style={{padding:'8px 10px',textAlign:'center',color:'#a78bfa',direction:'ltr'}}>{l.qty}</td>
+                      <td style={{padding:'8px 10px',direction:'ltr',textAlign:'left',color:'#63b3ed'}}>{fmtPrice(l.sellPrice)} أوق</td>
+                      <td style={{padding:'8px 10px',direction:'ltr',textAlign:'left',fontWeight:700,color:'#34d399'}}>{fmtPrice(l.sellPrice*l.qty)} أوق</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div style={{background:'rgba(255,255,255,.03)',borderRadius:10,padding:'12px 14px',display:'flex',flexDirection:'column',gap:6,fontSize:13}}>
+              <div style={{display:'flex',justifyContent:'space-between',color:'rgba(148,163,184,.65)'}}>
+                <span>المجموع الجزئي</span><span style={{direction:'ltr'}}>{fmtPrice(sel.subtotal)} أوق</span>
+              </div>
+              {sel.discAmt>0&&(
+                <div style={{display:'flex',justifyContent:'space-between',color:'#fbbf24'}}>
+                  <span>خصم ({sel.discount}%)</span><span style={{direction:'ltr'}}>- {fmtPrice(sel.discAmt)} أوق</span>
+                </div>
+              )}
+              <div style={{display:'flex',justifyContent:'space-between',fontWeight:900,fontSize:16,color:'#34d399',borderTop:'1px solid rgba(255,255,255,.08)',paddingTop:8,marginTop:4}}>
+                <span>الإجمالي النهائي</span><span style={{direction:'ltr'}}>{fmtPrice(sel.total)} أوق</span>
+              </div>
+            </div>
+            {sel.note&&<div style={{marginTop:12,background:'rgba(251,191,36,.07)',border:'1px solid rgba(251,191,36,.18)',borderRadius:9,padding:'9px 13px',fontSize:12,color:'#fbbf24'}}>📝 {sel.note}</div>}
+          </div>
+          <div style={{display:'flex',gap:9}}>
+            <button className='btn' onClick={()=>{setEditInv({...sel,lines:sel.lines.map(l=>({...l})),discount:sel.discount});setSel(null);}}
+              style={{flex:1,padding:11,background:'rgba(251,191,36,.15)',border:'1px solid rgba(251,191,36,.3)',borderRadius:11,color:'#fbbf24',fontWeight:900,fontSize:13}}>
+              ✏️ تعديل الفاتورة
+            </button>
+            <button className='btn' onClick={()=>handlePrint(sel)}
+              style={{flex:1,padding:11,background:'linear-gradient(135deg,#3b82f6,#8b5cf6)',border:'none',borderRadius:11,color:'#fff',fontWeight:900,fontSize:13,boxShadow:'0 4px 14px rgba(59,130,246,.28)'}}>
+              🖨️ طباعة الفاتورة
+            </button>
+          </div>
+        </Modal>
+      )}
+
+      {/* EDIT INVOICE MODAL */}
+      {editInv&&(
+        <Modal onClose={()=>setEditInv(null)} title={`✏️ تعديل فاتورة ${editInv.num}`} maxW={600}>
+          <div style={{marginBottom:14}}>
+            {/* Customer */}
+            <div style={{display:'flex',alignItems:'center',gap:10,background:'rgba(255,255,255,.04)',borderRadius:11,padding:'10px 14px',marginBottom:14}}>
+              <span style={{fontSize:22}}>{editInv.customer.avatar}</span>
+              <div style={{fontWeight:700,color:'#e2e8f0'}}>{editInv.customer.name}</div>
+              <span style={{fontSize:11,color:'rgba(148,163,184,.4)',marginRight:'auto',direction:'ltr'}}>{editInv.date}</span>
+            </div>
+
+            {/* Lines edit */}
+            <div style={{fontSize:12,fontWeight:700,color:'rgba(148,163,184,.6)',marginBottom:8}}>بنود الفاتورة</div>
+            <div style={{display:'flex',flexDirection:'column',gap:6,marginBottom:14}}>
+              {editInv.lines.map((l,i)=>(
+                <div key={l.id} style={{display:'flex',alignItems:'center',gap:8,background:'rgba(255,255,255,.03)',borderRadius:9,padding:'8px 12px',flexWrap:'wrap'}}>
+                  <span style={{flex:1,fontWeight:600,color:'#e2e8f0',fontSize:13,minWidth:120}}>{l.name}</span>
+                  <div style={{display:'flex',alignItems:'center',gap:5}}>
+                    <span style={{fontSize:11,color:'rgba(148,163,184,.5)'}}>ك:</span>
+                    <button className='btn' onClick={()=>setEditInv(p=>({...p,lines:p.lines.map((x,j)=>j===i?{...x,qty:Math.max(1,x.qty-1)}:x)}))}
+                      style={{width:22,height:22,borderRadius:6,border:'1px solid rgba(255,255,255,.1)',background:'rgba(255,255,255,.05)',color:'#94a3b8',fontSize:12,display:'flex',alignItems:'center',justifyContent:'center'}}>-</button>
+                    <span style={{minWidth:24,textAlign:'center',fontWeight:700,color:'#e2e8f0',direction:'ltr'}}>{l.qty}</span>
+                    <button className='btn' onClick={()=>setEditInv(p=>({...p,lines:p.lines.map((x,j)=>j===i?{...x,qty:x.qty+1}:x)}))}
+                      style={{width:22,height:22,borderRadius:6,border:'none',background:'rgba(99,179,237,.2)',color:'#63b3ed',fontSize:12,display:'flex',alignItems:'center',justifyContent:'center'}}>+</button>
+                  </div>
+                  <div style={{display:'flex',alignItems:'center',gap:5}}>
+                    <span style={{fontSize:11,color:'rgba(148,163,184,.5)'}}>سعر:</span>
+                    <input className='inp' inputMode='numeric' value={l.sellPrice}
+                      onChange={e=>setEditInv(p=>({...p,lines:p.lines.map((x,j)=>j===i?{...x,sellPrice:parseFloat(e.target.value)||0}:x)}))}
+                      style={{width:70,padding:'3px 7px',textAlign:'center',fontSize:12,direction:'ltr'}}/>
+                  </div>
+                  <span style={{fontSize:12,fontWeight:700,color:'#34d399',direction:'ltr',minWidth:70,textAlign:'left'}}>{fmtPrice(l.sellPrice*l.qty)} أوق</span>
+                  <button className='btn' onClick={()=>setEditInv(p=>({...p,lines:p.lines.filter((_,j)=>j!==i)}))}
+                    style={{width:22,height:22,borderRadius:6,background:'rgba(239,68,68,.12)',border:'1px solid rgba(239,68,68,.2)',color:'#f87171',fontSize:11,display:'flex',alignItems:'center',justifyContent:'center'}}>✕</button>
+                </div>
+              ))}
+            </div>
+
+            {/* Discount + Note */}
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:14}}>
+              <div>
+                <Lbl>الخصم (%)</Lbl>
+                <input className='inp' inputMode='numeric' value={editInv.discount}
+                  onChange={e=>setEditInv(p=>({...p,discount:parseFloat(e.target.value)||0}))}
+                  style={{textAlign:'center'}}/>
+              </div>
+              <div>
+                <Lbl>ملاحظة</Lbl>
+                <input className='inp' value={editInv.note||''} onChange={e=>setEditInv(p=>({...p,note:e.target.value}))}/>
+              </div>
+            </div>
+
+            {/* Live total */}
+            {(()=>{
+              const sub=editInv.lines.reduce((s,l)=>s+l.sellPrice*l.qty,0);
+              const disc=Math.round(sub*(editInv.discount/100));
+              const tot=sub-disc;
+              return(
+                <div style={{background:'linear-gradient(135deg,rgba(52,211,153,.08),rgba(99,179,237,.08))',border:'1px solid rgba(52,211,153,.18)',borderRadius:11,padding:'10px 14px',display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:14}}>
+                  <div style={{fontSize:12,color:'rgba(148,163,184,.6)'}}>
+                    {disc>0&&<div>خصم: <strong style={{color:'#fbbf24'}}>- {fmtPrice(disc)} أوق</strong></div>}
+                  </div>
+                  <div style={{fontWeight:900,fontSize:18,color:'#34d399',direction:'ltr'}}>{fmtPrice(tot)} أوق</div>
+                </div>
+              );
+            })()}
+          </div>
+          <div style={{display:'flex',gap:9}}>
+            <button className='btn' onClick={()=>setEditInv(null)}
+              style={{flex:1,padding:11,background:'rgba(255,255,255,.06)',border:'1px solid rgba(255,255,255,.1)',borderRadius:11,color:'#94a3b8',fontWeight:700,fontSize:13}}>
+              إلغاء
+            </button>
+            <button className='btn' onClick={saveInvoiceEdit}
+              style={{flex:2,padding:11,background:'linear-gradient(135deg,#059669,#10b981)',border:'none',borderRadius:11,color:'#fff',fontWeight:900,fontSize:13,boxShadow:'0 4px 14px rgba(5,150,105,.28)'}}>
+              💾 حفظ التعديلات
+            </button>
+          </div>
+        </Modal>
+      )}
+
+      {/* DELETE CONFIRM */}
+      {delId&&(
+        <Modal onClose={()=>setDelId(null)} title='🗑️ حذف الفاتورة' maxW={340}>
+          <div style={{textAlign:'center',padding:'10px 0 20px'}}>
+            <div style={{fontSize:44,marginBottom:10}}>⚠️</div>
+            <div style={{fontSize:14,color:'rgba(148,163,184,.8)',marginBottom:6}}>هل أنت متأكد من حذف هذه الفاتورة؟</div>
+            <div style={{fontSize:12,color:'rgba(148,163,184,.45)'}}>لا يمكن التراجع عن هذا الإجراء</div>
+          </div>
+          <div style={{display:'flex',gap:9}}>
+            <button className='btn' onClick={()=>setDelId(null)}
+              style={{flex:1,padding:11,background:'rgba(255,255,255,.06)',border:'1px solid rgba(255,255,255,.1)',borderRadius:11,color:'#94a3b8',fontWeight:700,fontSize:13}}>
+              إلغاء
+            </button>
+            <button className='btn' onClick={()=>deleteInvoice(delId)}
+              style={{flex:1,padding:11,background:'rgba(239,68,68,.18)',border:'1px solid rgba(239,68,68,.35)',borderRadius:11,color:'#f87171',fontWeight:900,fontSize:13}}>
+              🗑️ حذف نهائياً
+            </button>
+          </div>
+        </Modal>
+      )}
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════════
+   SETTINGS TAB
+══════════════════════════════════════════════ */
+function SettingsTab({adminPass,setAdminPass}){
+  const[oldPw,setOldPw]=useState('');
+  const[newPw,setNewPw]=useState('');
+  const[confirmPw,setConfirmPw]=useState('');
+  const[msg,setMsg]=useState(null); // {type:'ok'|'err', text}
+  const[showOld,setShowOld]=useState(false);
+  const[showNew,setShowNew]=useState(false);
+
+  function changePass(){
+    if(oldPw!==adminPass){setMsg({type:'err',text:'كلمة المرور الحالية خاطئة ❌'});return;}
+    if(newPw.length<4){setMsg({type:'err',text:'كلمة المرور الجديدة يجب أن تكون 4 أحرف على الأقل'});return;}
+    if(newPw!==confirmPw){setMsg({type:'err',text:'كلمة المرور الجديدة غير متطابقة ❌'});return;}
+    setAdminPass(newPw);
+    setOldPw('');setNewPw('');setConfirmPw('');
+    setMsg({type:'ok',text:'✅ تم تغيير كلمة المرور بنجاح'});
+    setTimeout(()=>setMsg(null),3000);
+  }
+
+  return(
+    <div className='fade-up'>
+      <h1 style={{fontSize:21,fontWeight:900,color:'#e2e8f0',marginBottom:5}}>الإعدادات ⚙️</h1>
+      <p style={{fontSize:13,color:'rgba(148,163,184,.5)',marginBottom:24}}>إعدادات النظام والحساب</p>
+
+      <div style={{maxWidth:440,width:'100%'}}>
+        {/* Change Password Card */}
+        <div className='card' style={{padding:22,marginBottom:16}}>
+          <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:18}}>
+            <div style={{width:38,height:38,borderRadius:11,background:'rgba(99,179,237,.15)',border:'1px solid rgba(99,179,237,.25)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:18}}>🔑</div>
+            <div>
+              <div style={{fontWeight:800,color:'#e2e8f0',fontSize:14}}>تغيير كلمة المرور</div>
+              <div style={{fontSize:11,color:'rgba(148,163,184,.45)'}}>كلمة مرور لوحة الإدارة</div>
+            </div>
+          </div>
+
+          <div style={{display:'flex',flexDirection:'column',gap:11}}>
+            <div>
+              <Lbl>كلمة المرور الحالية</Lbl>
+              <div style={{position:'relative'}}>
+                <input className='inp' type={showOld?'text':'password'} placeholder='أدخل كلمة المرور الحالية' value={oldPw} onChange={e=>setOldPw(e.target.value)}/>
+                <button className='btn' onClick={()=>setShowOld(x=>!x)}
+                  style={{position:'absolute',left:10,top:'50%',transform:'translateY(-50%)',background:'none',border:'none',color:'rgba(148,163,184,.5)',fontSize:14,padding:'0 4px'}}>
+                  {showOld?'🙈':'👁️'}
+                </button>
+              </div>
+            </div>
+            <div>
+              <Lbl>كلمة المرور الجديدة</Lbl>
+              <div style={{position:'relative'}}>
+                <input className='inp' type={showNew?'text':'password'} placeholder='كلمة مرور جديدة (4 أحرف على الأقل)' value={newPw} onChange={e=>setNewPw(e.target.value)}/>
+                <button className='btn' onClick={()=>setShowNew(x=>!x)}
+                  style={{position:'absolute',left:10,top:'50%',transform:'translateY(-50%)',background:'none',border:'none',color:'rgba(148,163,184,.5)',fontSize:14,padding:'0 4px'}}>
+                  {showNew?'🙈':'👁️'}
+                </button>
+              </div>
+            </div>
+            <div>
+              <Lbl>تأكيد كلمة المرور الجديدة</Lbl>
+              <input className='inp' type='password' placeholder='أعد كتابة كلمة المرور الجديدة' value={confirmPw} onChange={e=>setConfirmPw(e.target.value)}
+                onKeyDown={e=>e.key==='Enter'&&changePass()}
+                style={{border:confirmPw&&confirmPw!==newPw?'1px solid rgba(239,68,68,.5)':'1px solid rgba(255,255,255,.1)'}}/>
+              {confirmPw&&confirmPw===newPw&&<div style={{fontSize:11,color:'#34d399',marginTop:4}}>✅ متطابقة</div>}
+            </div>
+
+            {msg&&(
+              <div style={{padding:'10px 14px',borderRadius:10,background:msg.type==='ok'?'rgba(52,211,153,.1)':'rgba(239,68,68,.1)',border:`1px solid ${msg.type==='ok'?'rgba(52,211,153,.25)':'rgba(239,68,68,.25)'}`,fontSize:13,fontWeight:600,color:msg.type==='ok'?'#34d399':'#f87171'}}>
+                {msg.text}
+              </div>
+            )}
+
+            <button className='btn' onClick={changePass}
+              disabled={!oldPw||!newPw||!confirmPw}
+              style={{width:'100%',padding:12,background:(!oldPw||!newPw||!confirmPw)?'rgba(255,255,255,.05)':'linear-gradient(135deg,#3b82f6,#8b5cf6)',border:'none',borderRadius:11,color:(!oldPw||!newPw||!confirmPw)?'rgba(148,163,184,.3)':'#fff',fontWeight:900,fontSize:14,boxShadow:(!oldPw||!newPw||!confirmPw)?'none':'0 4px 14px rgba(59,130,246,.28)'}}>
+              🔑 تغيير كلمة المرور
+            </button>
+          </div>
+        </div>
+
+        {/* Sync Card */}
+        <div className='card' style={{padding:16,marginBottom:16}}>
+          <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:14}}>
+            <div style={{width:38,height:38,borderRadius:11,background:'rgba(249,115,22,.12)',border:'1px solid rgba(249,115,22,.25)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:18}}>🔥</div>
+            <div>
+              <div style={{fontWeight:800,color:'#e2e8f0',fontSize:14}}>حالة المزامنة</div>
+              <div style={{fontSize:11,color:'rgba(148,163,184,.45)'}}>Firebase Firestore</div>
+            </div>
+          </div>
+          <div style={{display:'flex',alignItems:'center',gap:8,padding:'10px 14px',borderRadius:10,background:'rgba(52,211,153,.07)',border:'1px solid rgba(52,211,153,.18)',marginBottom:10}}>
+            <span style={{width:9,height:9,borderRadius:'50%',background:'#34d399',boxShadow:'0 0 8px #34d399',flexShrink:0}}/>
+            <span style={{fontSize:12,fontWeight:600,color:'#34d399'}}>البيانات تُزامَن تلقائياً مع Firebase</span>
+          </div>
+          <div style={{fontSize:11,color:'rgba(148,163,184,.45)',lineHeight:1.7}}>
+            ✅ المنتجات · العملاء · الفواتير · كلمة المرور<br/>
+            🔄 التحديثات تظهر فوراً على كل الأجهزة<br/>
+            💾 البيانات محفوظة حتى بعد إغلاق المتصفح
+          </div>
+        </div>
+
+        {/* Info Card */}
+        <div className='card' style={{padding:16}}>
+          <div style={{fontSize:12,color:'rgba(148,163,184,.5)',marginBottom:10,fontWeight:700}}>ℹ️ معلومات النظام</div>
+          <div style={{display:'flex',flexDirection:'column',gap:6,fontSize:12}}>
+            <div style={{display:'flex',justifyContent:'space-between',padding:'6px 0',borderBottom:'1px solid rgba(255,255,255,.04)'}}>
+              <span style={{color:'rgba(148,163,184,.6)'}}>اسم المحل</span>
+              <span style={{color:'#e2e8f0',fontWeight:600}}>محل العدالة ⚡</span>
+            </div>
+            <div style={{display:'flex',justifyContent:'space-between',padding:'6px 0',borderBottom:'1px solid rgba(255,255,255,.04)'}}>
+              <span style={{color:'rgba(148,163,184,.6)'}}>النظام</span>
+              <span style={{color:'#e2e8f0',fontWeight:600}}>نظام الإدارة الشامل</span>
+            </div>
+            <div style={{display:'flex',justifyContent:'space-between',padding:'6px 0'}}>
+              <span style={{color:'rgba(148,163,184,.6)'}}>الإصدار</span>
+              <span style={{color:'#63b3ed',fontWeight:600,direction:'ltr'}}>v7.0</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════════
+   CUSTOMERS TAB
+══════════════════════════════════════════════ */
+function CustomersTab({customers,setCustomers,deleteCustomer}){
+  const[showAdd,setShowAdd]=useState(false);
+  const[delId,setDelId]=useState(null);
+  const[search,setSearch]=useState('');
+  const[form,setForm]=useState({name:'',phone:'',avatar:'👤',color:'#63b3ed'});
+  const fSet=k=>e=>setForm(f=>({...f,[k]:e.target.value}));
+
+  function addCustomer(){
+    if(!form.name.trim())return;
+    setCustomers(p=>[...p,{id:genId(),name:form.name.trim(),phone:form.phone.trim(),avatar:form.avatar,color:form.color}]);
+    setForm({name:'',phone:'',avatar:'👤',color:'#63b3ed'});
+    setShowAdd(false);
+  }
+
+  const filtered=customers.filter(c=>c.name.includes(search)||c.phone.includes(search));
+
+  return(
+    <div className='fade-up'>
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:18,flexWrap:'wrap',gap:10}}>
+        <div>
+          <h1 style={{fontSize:21,fontWeight:900,color:'#e2e8f0',marginBottom:3}}>العملاء 👥</h1>
+          <div style={{fontSize:12,color:'rgba(148,163,184,.55)'}}>{fmt(customers.length)} عميل</div>
+        </div>
+        <button className='btn' onClick={()=>setShowAdd(true)} style={{background:'linear-gradient(135deg,#3b82f6,#8b5cf6)',border:'none',borderRadius:12,padding:'10px 18px',color:'#fff',fontWeight:700,fontSize:13,display:'flex',alignItems:'center',gap:7,boxShadow:'0 4px 14px rgba(59,130,246,.3)'}}>
+          <span style={{fontSize:17}}>+</span> إضافة عميل
+        </button>
+      </div>
+
+      <div style={{position:'relative',maxWidth:300,marginBottom:16}}>
+        <span style={{position:'absolute',right:11,top:'50%',transform:'translateY(-50%)',color:'rgba(148,163,184,.45)',fontSize:13}}>🔍</span>
+        <input className='inp' placeholder='بحث...' value={search} onChange={e=>setSearch(e.target.value)} style={{paddingRight:33,fontSize:13}}/>
+      </div>
+
+      {filtered.length===0?(
+        <div style={{textAlign:'center',padding:'60px 0',color:'rgba(148,163,184,.3)'}}>
+          <div style={{fontSize:46,marginBottom:10}}>👥</div>
+          <div style={{fontSize:16,fontWeight:700}}>لا يوجد عملاء</div>
+        </div>
+      ):(
+        <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(150px,1fr))',gap:10}}>
+          {filtered.map(c=>(
+            <div key={c.id} className='card' style={{padding:18,position:'relative',textAlign:'center',transition:'transform .2s,box-shadow .2s'}}
+              onMouseEnter={e=>{e.currentTarget.style.transform='translateY(-3px)';e.currentTarget.style.boxShadow=`0 10px 26px ${c.color}20`}}
+              onMouseLeave={e=>{e.currentTarget.style.transform='translateY(0)';e.currentTarget.style.boxShadow='none'}}>
+              <button className='btn' onClick={()=>setDelId(c.id)} style={{position:'absolute',top:10,left:10,width:26,height:26,borderRadius:7,background:'rgba(239,68,68,.1)',border:'1px solid rgba(239,68,68,.18)',color:'#f87171',fontSize:12,display:'flex',alignItems:'center',justifyContent:'center'}}>✕</button>
+              <div style={{width:54,height:54,borderRadius:16,background:`${c.color}18`,border:`2px solid ${c.color}40`,display:'inline-flex',alignItems:'center',justifyContent:'center',fontSize:24,marginBottom:8}}>{c.avatar}</div>
+              <div style={{fontSize:14,fontWeight:800,color:'#e2e8f0',marginBottom:3}}>{c.name}</div>
+              {c.phone?<div style={{fontSize:12,color:'rgba(148,163,184,.55)'}}>📞 {c.phone}</div>:<div style={{fontSize:11,color:'rgba(148,163,184,.3)'}}>لا يوجد هاتف</div>}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {showAdd&&(
+        <Modal onClose={()=>setShowAdd(false)} title='👤 إضافة عميل جديد'>
+          <div style={{textAlign:'center',marginBottom:14}}>
+            <div style={{width:60,height:60,borderRadius:17,background:`${form.color}18`,border:`2px solid ${form.color}44`,display:'inline-flex',alignItems:'center',justifyContent:'center',fontSize:28}}>{form.avatar}</div>
+          </div>
+          <Lbl>الأيقونة</Lbl>
+          <div style={{display:'flex',flexWrap:'wrap',gap:5,marginBottom:12}}>
+            {AVATARS.map(a=>(
+              <button key={a} className='btn' onClick={()=>setForm(f=>({...f,avatar:a}))} style={{width:33,height:33,borderRadius:8,border:form.avatar===a?`2px solid ${form.color}`:'1px solid rgba(255,255,255,.09)',background:form.avatar===a?`${form.color}22`:'rgba(255,255,255,.04)',fontSize:15,display:'flex',alignItems:'center',justifyContent:'center'}}>{a}</button>
+            ))}
+          </div>
+          <Lbl>اللون</Lbl>
+          <div style={{display:'flex',gap:7,marginBottom:13,flexWrap:'wrap'}}>
+            {CUST_COLORS.map(col=>(
+              <button key={col} className='btn' onClick={()=>setForm(f=>({...f,color:col}))} style={{width:25,height:25,borderRadius:'50%',border:form.color===col?'3px solid #fff':'2px solid transparent',background:col,boxShadow:form.color===col?`0 0 0 2px ${col}`:'none'}}/>
+            ))}
+          </div>
+          <Lbl>الاسم *</Lbl>
+          <input className='inp' placeholder='اسم العميل...' value={form.name} onChange={fSet('name')} style={{marginBottom:9}} onKeyDown={e=>e.key==='Enter'&&addCustomer()}/>
+          <Lbl>رقم الهاتف <span style={{color:'rgba(148,163,184,.35)',fontSize:11}}>(اختياري)</span></Lbl>
+          <input className='inp' placeholder='رقم الهاتف...' value={form.phone} onChange={fSet('phone')} style={{marginBottom:15}} type='tel'/>
+          <Btn onClick={addCustomer} disabled={!form.name.trim()}>✓ إضافة العميل</Btn>
+        </Modal>
+      )}
+
+      {delId&&(
+        <Modal onClose={()=>setDelId(null)} title='🗑️ حذف العميل' maxW={340}>
+          <div style={{textAlign:'center',marginBottom:18,color:'rgba(148,163,184,.65)',fontSize:13}}>هل تريد حذف هذا العميل؟ لا يمكن التراجع.</div>
+          <div style={{display:'flex',gap:9}}>
+            <button className='btn' onClick={()=>setDelId(null)} style={{flex:1,padding:11,background:'rgba(255,255,255,.06)',border:'1px solid rgba(255,255,255,.1)',borderRadius:11,color:'#94a3b8',fontWeight:700,fontSize:13}}>إلغاء</button>
+            <button className='btn' onClick={()=>{setCustomers(p=>p.filter(c=>c.id!==delId));setDelId(null);}} style={{flex:1,padding:11,background:'linear-gradient(135deg,#ef4444,#dc2626)',border:'none',borderRadius:11,color:'#fff',fontWeight:700,fontSize:13,boxShadow:'0 4px 12px rgba(239,68,68,.28)'}}>حذف</button>
+          </div>
+        </Modal>
+      )}
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════════
+   INVOICE TAB
+══════════════════════════════════════════════ */
+function InvoiceTab({products,customers,setInvoices,deductStock,handlePrint,setProducts}){
+  // ── Step 1: pick type → Step 2: pick customer → Step 3: build invoice ──
+  const[step,setStep]=useState(0); // 0=type, 1=customer, 2=build
+  const[invType,setInvType]=useState(null); // 'export'|'import'
+  const[customer,setCustomer]=useState(null);
+  const[lines,setLines]=useState([]);
+  const[pSearch,setPSearch]=useState('');
+  const[discount,setDiscount]=useState(0);
+  const[customDisc,setCustomDisc]=useState('');
+  const[note,setNote]=useState('');
+  const[invN]=useState(makeInvNum);
+  const[belowCostWarning,setBelowCostWarning]=useState(null);
+
+  // Import-only: new product form
+  const[newProd,setNewProd]=useState({name:'',qty:'',price:'',category:'أخرى'});
+  const[showNewProd,setShowNewProd]=useState(false);
+
+  const CATS=['هواتف ذكية','هواتف عادية','أجهزة لوحية','شواحن','كابلات','باوربانك','سماعات وكوتير','أجهزة صوتية','اكسسوارات','أخرى'];
+
+  const filteredProds=useMemo(()=>{
+    if(!pSearch.trim())return[];
+    return products.filter(p=>
+      (invType==='import'||p.qty>0)&&
+      p.name.toLowerCase().includes(pSearch.toLowerCase())
+    ).slice(0,8);
+  },[products,pSearch,invType]);
+
+  function reset(){
+    setStep(0);setInvType(null);setCustomer(null);setLines([]);
+    setPSearch('');setDiscount(0);setCustomDisc('');setNote('');
+    setShowNewProd(false);setNewProd({name:'',qty:'',price:'',category:'أخرى'});
+  }
+
+  function addLine(p){
+    setLines(prev=>{
+      const ex=prev.find(l=>l.id===p.id);
+      if(ex){
+        if(invType==='export'&&ex.qty>=p.qty)return prev;
+        return prev.map(l=>l.id===p.id?{...l,qty:l.qty+1}:l);
+      }
+      return[...prev,{...p,qty:1,sellPrice:p.price,costPrice:p.price}];
+    });
+    setPSearch('');
+  }
+
+  // Add brand-new product (import only) → save to products list too
+  function addNewProduct(){
+    if(!newProd.name.trim()||!newProd.price||!newProd.qty)return;
+    const id=genId();
+    const prod={
+      id,
+      name:newProd.name.trim(),
+      price:parseFloat(newProd.price)||0,
+      qty:parseInt(newProd.qty)||0,
+      category:newProd.category,
+      lowStock:3,
+    };
+    // Save to global products list
+    setProducts(prev=>[...prev,prod]);
+    // Add to invoice lines
+    setLines(prev=>[...prev,{...prod,qty:parseInt(newProd.qty)||1,sellPrice:prod.price,costPrice:prod.price}]);
+    setNewProd({name:'',qty:'',price:'',category:'أخرى'});
+    setShowNewProd(false);
+    setPSearch('');
+  }
+
+  function handleSellPriceChange(lineId,val){
+    setLines(prev=>prev.map(l=>l.id===lineId?{...l,sellPrice:parseFloat(val)||0}:l));
+  }
+  function handleSellPriceBlur(lineId){
+    if(invType==='import')return; // no below-cost check on import
+    const line=lines.find(l=>l.id===lineId);
+    if(line&&line.sellPrice>0&&line.sellPrice<line.costPrice)
+      setBelowCostWarning({lineId,newPrice:line.sellPrice,originalPrice:line.costPrice,productName:line.name});
+  }
+
+  const effDisc=Number(customDisc)||discount;
+  const subtotal=lines.reduce((s,l)=>s+l.sellPrice*l.qty,0);
+  const discAmt=Math.round(subtotal*(effDisc/100));
+  const total=subtotal-discAmt;
+
+  function confirmInvoice(){
+    const inv={
+      id:genId(),num:invN,
+      type:invType, // 'export'|'import'
+      customer,lines,subtotal,discount:effDisc,discAmt,total,
+      date:todayStr(),note
+    };
+    setInvoices(p=>[inv,...p]);
+    if(invType==='export') deductStock(lines);
+    // import: stock already added when product was created/added
+    handlePrint(inv);
+    reset();
+  }
+
+  // ══════════════════════════════
+  // STEP 0 — Pick invoice type
+  // ══════════════════════════════
+  if(step===0)return(
+    <div className='fade-up'>
+      <h1 style={{fontSize:21,fontWeight:900,color:'#e2e8f0',marginBottom:5}}>فاتورة جديدة 🧾</h1>
+      <p style={{fontSize:13,color:'rgba(148,163,184,.55)',marginBottom:28}}>اختر نوع الفاتورة</p>
+      <div className='mob-grid2' style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14,maxWidth:520}}>
+
+        {/* EXPORT */}
+        <div className='card btn' onClick={()=>{setInvType('export');setStep(1);}}
+          style={{padding:'28px 20px',textAlign:'center',cursor:'pointer',border:'1px solid rgba(52,211,153,.2)',background:'rgba(52,211,153,.05)',transition:'all .22s'}}
+          onMouseEnter={e=>{e.currentTarget.style.background='rgba(52,211,153,.12)';e.currentTarget.style.transform='translateY(-4px)';e.currentTarget.style.boxShadow='0 16px 36px rgba(52,211,153,.15)';}}
+          onMouseLeave={e=>{e.currentTarget.style.background='rgba(52,211,153,.05)';e.currentTarget.style.transform='translateY(0)';e.currentTarget.style.boxShadow='none';}}>
+          <div style={{fontSize:44,marginBottom:12}}>🛒</div>
+          <div style={{fontSize:17,fontWeight:900,color:'#34d399',marginBottom:6}}>فاتورة بيع</div>
+          <div style={{fontSize:12,color:'rgba(148,163,184,.6)',lineHeight:1.6}}>بيع منتجات للعملاء<br/>يُخصم المخزون تلقائياً</div>
+          <div style={{marginTop:14,padding:'7px 0',background:'rgba(52,211,153,.18)',borderRadius:10,fontSize:13,fontWeight:700,color:'#34d399'}}>اختيار ←</div>
+        </div>
+
+        {/* IMPORT */}
+        <div className='card btn' onClick={()=>{setInvType('import');setStep(1);}}
+          style={{padding:'28px 20px',textAlign:'center',cursor:'pointer',border:'1px solid rgba(251,191,36,.2)',background:'rgba(251,191,36,.05)',transition:'all .22s'}}
+          onMouseEnter={e=>{e.currentTarget.style.background='rgba(251,191,36,.12)';e.currentTarget.style.transform='translateY(-4px)';e.currentTarget.style.boxShadow='0 16px 36px rgba(251,191,36,.15)';}}
+          onMouseLeave={e=>{e.currentTarget.style.background='rgba(251,191,36,.05)';e.currentTarget.style.transform='translateY(0)';e.currentTarget.style.boxShadow='none';}}>
+          <div style={{fontSize:44,marginBottom:12}}>📦</div>
+          <div style={{fontSize:17,fontWeight:900,color:'#fbbf24',marginBottom:6}}>فاتورة استيراد</div>
+          <div style={{fontSize:12,color:'rgba(148,163,184,.6)',lineHeight:1.6}}>استيراد بضاعة للمحل<br/>يمكن إضافة منتجات جديدة</div>
+          <div style={{marginTop:14,padding:'7px 0',background:'rgba(251,191,36,.18)',borderRadius:10,fontSize:13,fontWeight:700,color:'#fbbf24'}}>اختيار ←</div>
+        </div>
+      </div>
+    </div>
+  );
+
+  // ══════════════════════════════
+  // STEP 1 — Pick customer
+  // ══════════════════════════════
+  if(step===1)return(
+    <div className='fade-up'>
+      <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:20}}>
+        <button className='btn' onClick={reset} style={{background:'rgba(255,255,255,.07)',border:'1px solid rgba(255,255,255,.1)',borderRadius:9,padding:'7px 13px',color:'#94a3b8',fontSize:13,fontWeight:600}}>← رجوع</button>
+        <div>
+          <h1 style={{fontSize:20,fontWeight:900,color:'#e2e8f0'}}>
+            {invType==='import'?'📦 فاتورة استيراد':'🛒 فاتورة بيع'}
+          </h1>
+          <div style={{fontSize:12,color:'rgba(148,163,184,.45)',marginTop:2}}>اختر {invType==='import'?'المورد':'العميل'}</div>
+        </div>
+        <div style={{marginRight:'auto',padding:'5px 13px',borderRadius:50,fontSize:12,fontWeight:700,background:invType==='import'?'rgba(251,191,36,.12)':'rgba(52,211,153,.12)',color:invType==='import'?'#fbbf24':'#34d399',border:invType==='import'?'1px solid rgba(251,191,36,.25)':'1px solid rgba(52,211,153,.25)'}}>
+          {invType==='import'?'📦 استيراد':'🛒 بيع'}
+        </div>
+      </div>
+      {customers.length===0?(
+        <div style={{textAlign:'center',padding:'60px 0',color:'rgba(148,163,184,.35)'}}>
+          <div style={{fontSize:46,marginBottom:10}}>👥</div>
+          <div style={{fontSize:15,fontWeight:700}}>لا يوجد {invType==='import'?'موردون':'عملاء'}</div>
+          <div style={{fontSize:12,marginTop:5}}>أضف من قسم العملاء أولاً</div>
+        </div>
+      ):(
+        <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(195px,1fr))',gap:11}}>
+          {customers.map(c=>(
+            <div key={c.id} className='card btn' onClick={()=>{setCustomer(c);setStep(2);}} style={{padding:18,textAlign:'center',cursor:'pointer',transition:'all .2s'}}
+              onMouseEnter={e=>{e.currentTarget.style.borderColor=c.color+'66';e.currentTarget.style.transform='translateY(-3px)';}}
+              onMouseLeave={e=>{e.currentTarget.style.borderColor='rgba(255,255,255,.07)';e.currentTarget.style.transform='translateY(0)';}}>
+              <div style={{width:50,height:50,borderRadius:14,background:`${c.color}18`,border:`2px solid ${c.color}40`,display:'inline-flex',alignItems:'center',justifyContent:'center',fontSize:22,marginBottom:8}}>{c.avatar}</div>
+              <div style={{fontSize:14,fontWeight:800,color:'#e2e8f0',marginBottom:3}}>{c.name}</div>
+              {c.phone&&<div style={{fontSize:11,color:'rgba(148,163,184,.5)'}}>📞 {c.phone}</div>}
+              <div style={{marginTop:11,padding:'6px 0',background:`${c.color}18`,borderRadius:9,fontSize:12,fontWeight:700,color:c.color}}>اختيار ←</div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+
+  // ══════════════════════════════
+  // STEP 2 — Build invoice
+  // ══════════════════════════════
+  const isImport=invType==='import';
+  const accentColor=isImport?'#fbbf24':'#34d399';
+  const accentBg=isImport?'rgba(251,191,36,.12)':'rgba(52,211,153,.12)';
+
+  return(
+    <div className='fade-up'>
+      <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:18,flexWrap:'wrap'}}>
+        <button className='btn' onClick={()=>setStep(1)} style={{background:'rgba(255,255,255,.07)',border:'1px solid rgba(255,255,255,.1)',borderRadius:9,padding:'7px 13px',color:'#94a3b8',fontSize:13,fontWeight:600}}>← رجوع</button>
+        <h1 style={{fontSize:19,fontWeight:900,color:'#e2e8f0'}}>
+          {isImport?'📦':'🛒'} {customer.name}
+        </h1>
+        <div style={{padding:'4px 12px',borderRadius:50,fontSize:11,fontWeight:700,background:accentBg,color:accentColor,border:`1px solid ${accentColor}40`}}>
+          {isImport?'استيراد':'بيع'}
+        </div>
+        <span style={{fontSize:12,color:'rgba(148,163,184,.4)',marginRight:'auto',direction:'ltr'}}>{invN}</span>
+      </div>
+
+      <div className='inv-grid' style={{display:'grid',gridTemplateColumns:'1fr 310px',gap:14,alignItems:'start'}}>
+        {/* LEFT */}
+        <div style={{display:'flex',flexDirection:'column',gap:12}}>
+
+          {/* Search existing products */}
+          <div className='card' style={{padding:15}}>
+            <div style={{fontSize:13,fontWeight:700,color:'#e2e8f0',marginBottom:9}}>
+              🔍 {isImport?'ابحث في منتجات المحل':'ابحث وأضف منتجاً'}
+            </div>
+            <div style={{position:'relative'}}>
+              <input className='inp' placeholder='اكتب اسم المنتج...' value={pSearch} onChange={e=>setPSearch(e.target.value)}/>
+              {filteredProds.length>0&&(
+                <div style={{position:'absolute',top:'calc(100% + 5px)',right:0,left:0,background:'#0d1525',border:'1px solid rgba(255,255,255,.11)',borderRadius:13,overflow:'hidden',zIndex:30,boxShadow:'0 14px 40px rgba(0,0,0,.6)'}}>
+                  {filteredProds.map(p=>{
+                    const col=CAT_COLORS[p.category]||'#94a3b8';
+                    return(
+                      <div key={p.id} onClick={()=>addLine(p)} style={{padding:'9px 13px',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'space-between',borderBottom:'1px solid rgba(255,255,255,.04)',transition:'background .12s'}}
+                        onMouseEnter={e=>e.currentTarget.style.background='rgba(99,179,237,.1)'}
+                        onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
+                        <div style={{display:'flex',alignItems:'center',gap:8}}>
+                          <span style={{fontSize:17}}>{getEmoji(p)}</span>
+                          <div>
+                            <div style={{fontSize:13,fontWeight:600,color:'#e2e8f0'}}>{p.name}</div>
+                            <span className='tag' style={{background:`${col}14`,color:col,border:`1px solid ${col}22`,fontSize:10}}>{p.category}</span>
+                          </div>
+                        </div>
+                        <div style={{textAlign:'left'}}>
+                          <div style={{fontSize:13,fontWeight:800,color:'#63b3ed',direction:'ltr'}}>{fmtPrice(p.price)} أوق</div>
+                          <div style={{fontSize:10,color:'rgba(148,163,184,.45)',direction:'ltr'}}>{isImport?'في المخزون:':'متوفر:'} {fmt(p.qty)}</div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Import-only: add new product button */}
+            {isImport&&(
+              <div style={{marginTop:10}}>
+                <button className='btn' onClick={()=>setShowNewProd(x=>!x)}
+                  style={{width:'100%',padding:'9px 0',background:showNewProd?'rgba(251,191,36,.15)':'rgba(255,255,255,.05)',border:`1px solid ${showNewProd?'rgba(251,191,36,.4)':'rgba(255,255,255,.1)'}`,borderRadius:9,color:showNewProd?'#fbbf24':'#94a3b8',fontWeight:700,fontSize:13,display:'flex',alignItems:'center',justifyContent:'center',gap:7}}>
+                  {showNewProd?'✕ إلغاء':'➕ إضافة منتج جديد غير موجود'}
+                </button>
+
+                {showNewProd&&(
+                  <div style={{marginTop:10,background:'rgba(251,191,36,.05)',border:'1px solid rgba(251,191,36,.2)',borderRadius:12,padding:14,display:'flex',flexDirection:'column',gap:10}}>
+                    <div style={{fontSize:12,fontWeight:700,color:'#fbbf24',marginBottom:2}}>📦 منتج جديد — سيُضاف للمخزون تلقائياً</div>
+                    <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8}}>
+                      <div style={{gridColumn:'1/-1'}}>
+                        <Lbl>اسم المنتج *</Lbl>
+                        <input className='inp' placeholder='مثال: سماعة JBL Tune 510' value={newProd.name} onChange={e=>setNewProd(p=>({...p,name:e.target.value}))}/>
+                      </div>
+                      <div>
+                        <Lbl>سعر التكلفة (أوق) *</Lbl>
+                        <input className='inp' inputMode='numeric' placeholder='0' value={newProd.price} onChange={e=>setNewProd(p=>({...p,price:e.target.value}))}/>
+                      </div>
+                      <div>
+                        <Lbl>الكمية المستوردة *</Lbl>
+                        <input className='inp' inputMode='numeric' placeholder='0' value={newProd.qty} onChange={e=>setNewProd(p=>({...p,qty:e.target.value}))}/>
+                      </div>
+                      <div style={{gridColumn:'1/-1'}}>
+                        <Lbl>التصنيف</Lbl>
+                        <select className='inp' value={newProd.category} onChange={e=>setNewProd(p=>({...p,category:e.target.value}))}
+                          style={{cursor:'pointer'}}>
+                          {CATS.map(c=><option key={c} value={c}>{c}</option>)}
+                        </select>
+                      </div>
+                    </div>
+                    <button className='btn' onClick={addNewProduct}
+                      disabled={!newProd.name.trim()||!newProd.price||!newProd.qty}
+                      style={{padding:10,background:(!newProd.name.trim()||!newProd.price||!newProd.qty)?'rgba(255,255,255,.05)':'linear-gradient(135deg,#d97706,#fbbf24)',border:'none',borderRadius:9,color:(!newProd.name.trim()||!newProd.price||!newProd.qty)?'rgba(148,163,184,.3)':'#fff',fontWeight:900,fontSize:13}}>
+                      ✅ إضافة للفاتورة والمخزون
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Lines table */}
+          {lines.length>0?(
+            <div className='card' style={{padding:15,overflow:'hidden'}}>
+              <div style={{fontSize:13,fontWeight:700,color:'#e2e8f0',marginBottom:11}}>
+                📋 بنود الفاتورة ({fmt(lines.length)})
+              </div>
+              <div style={{overflowX:'auto'}}>
+                <table style={{width:'100%',borderCollapse:'collapse',fontSize:12}}>
+                  <thead>
+                    <tr style={{borderBottom:'1px solid rgba(255,255,255,.07)'}}>
+                      {['المنتج','الكمية',isImport?'سعر التكلفة':'سعر البيع','الإجمالي',''].map(h=>(
+                        <th key={h} style={{padding:'6px 9px',textAlign:'right',color:'rgba(148,163,184,.5)',fontWeight:600,fontSize:10,whiteSpace:'nowrap'}}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {lines.map(l=>{
+                      const col=CAT_COLORS[l.category]||'#94a3b8';
+                      const stockP=products.find(p=>p.id===l.id);
+                      const isBelowCost=!isImport&&l.sellPrice<l.costPrice;
+                      const isNew=!stockP||stockP.qty===l.qty; // newly imported product
+                      return(
+                        <tr key={l.id} style={{borderBottom:'1px solid rgba(255,255,255,.04)',background:isBelowCost?'rgba(239,68,68,.03)':'transparent'}}>
+                          <td style={{padding:'8px 9px'}}>
+                            <div style={{fontWeight:600,color:'#e2e8f0',fontSize:12,display:'flex',alignItems:'center',gap:5}}>
+                              {l.name}
+                              {isImport&&isNew&&<span style={{fontSize:9,padding:'1px 5px',borderRadius:4,background:'rgba(251,191,36,.15)',color:'#fbbf24',border:'1px solid rgba(251,191,36,.25)'}}>جديد</span>}
+                            </div>
+                            <span className='tag' style={{background:`${col}11`,color:col,border:`1px solid ${col}1a`,fontSize:9}}>{l.category}</span>
+                          </td>
+                          <td style={{padding:'8px 9px'}}>
+                            <div style={{display:'flex',alignItems:'center',gap:4}}>
+                              <button className='btn' onClick={()=>setLines(p=>p.map(x=>x.id===l.id?{...x,qty:Math.max(1,x.qty-1)}:x))} style={{width:21,height:21,borderRadius:6,border:'1px solid rgba(255,255,255,.1)',background:'rgba(255,255,255,.05)',color:'#94a3b8',fontSize:12,display:'flex',alignItems:'center',justifyContent:'center'}}>-</button>
+                              <span style={{minWidth:20,textAlign:'center',fontWeight:700,color:'#e2e8f0',direction:'ltr'}}>{l.qty}</span>
+                              <button className='btn' onClick={()=>setLines(p=>p.map(x=>x.id===l.id&&(isImport||x.qty<(stockP?.qty||99))?{...x,qty:x.qty+1}:x))} style={{width:21,height:21,borderRadius:6,border:'none',background:'rgba(99,179,237,.2)',color:'#63b3ed',fontSize:12,display:'flex',alignItems:'center',justifyContent:'center'}}>+</button>
+                            </div>
+                          </td>
+                          <td style={{padding:'8px 9px'}}>
+                            <input inputMode='numeric' value={l.sellPrice}
+                              onChange={e=>handleSellPriceChange(l.id,e.target.value)}
+                              onBlur={()=>handleSellPriceBlur(l.id)}
+                              style={{width:75,padding:'4px 6px',background:'rgba(255,255,255,.06)',border:'1px solid rgba(255,255,255,.1)',borderRadius:7,color:'#e2e8f0',fontSize:12,textAlign:'center',fontFamily:'Cairo,sans-serif',direction:'ltr'}}/>
+                          </td>
+                          <td style={{padding:'8px 9px',fontWeight:800,color:isImport?'#fbbf24':'#63b3ed',whiteSpace:'nowrap',direction:'ltr',textAlign:'left'}}>{fmtPrice(l.sellPrice*l.qty)} أوق</td>
+                          <td style={{padding:'8px 9px'}}>
+                            <button className='btn' onClick={()=>setLines(p=>p.filter(x=>x.id!==l.id))} style={{width:22,height:22,borderRadius:6,background:'rgba(239,68,68,.1)',border:'1px solid rgba(239,68,68,.18)',color:'#f87171',fontSize:11,display:'flex',alignItems:'center',justifyContent:'center'}}>✕</button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          ):(
+            <div className='card' style={{padding:34,textAlign:'center',color:'rgba(148,163,184,.3)'}}>
+              <div style={{fontSize:34,marginBottom:7}}>{isImport?'📦':'🛒'}</div>
+              <div style={{fontSize:14,fontWeight:700}}>لا توجد منتجات بعد</div>
+              <div style={{fontSize:12,marginTop:4}}>{isImport?'ابحث عن منتج موجود أو أضف منتجاً جديداً أعلاه':'ابحث عن منتج وأضفه أعلاه'}</div>
+            </div>
+          )}
+
+          <div className='card' style={{padding:14}}>
+            <Lbl>ملاحظة (اختياري)</Lbl>
+            <textarea className='inp' rows={2} placeholder='ملاحظة للفاتورة...' value={note} onChange={e=>setNote(e.target.value)} style={{resize:'vertical'}}/>
+          </div>
+        </div>
+
+        {/* RIGHT SUMMARY */}
+        <div className='card' style={{padding:17,position:'sticky',top:20,zIndex:5}}>
+          {/* Type badge */}
+          <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:14,paddingBottom:11,borderBottom:'1px solid rgba(255,255,255,.07)'}}>
+            <div style={{flex:1,fontSize:13,fontWeight:800,color:'#e2e8f0'}}>ملخص الفاتورة</div>
+            <div style={{padding:'3px 10px',borderRadius:50,fontSize:11,fontWeight:700,background:accentBg,color:accentColor,border:`1px solid ${accentColor}40`}}>
+              {isImport?'📦 استيراد':'🛒 بيع'}
+            </div>
+          </div>
+
+          <div style={{display:'flex',alignItems:'center',gap:9,marginBottom:14,padding:'9px 11px',background:'rgba(255,255,255,.03)',borderRadius:10}}>
+            <div style={{width:34,height:34,borderRadius:9,background:`${customer.color}18`,border:`1px solid ${customer.color}40`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:17}}>{customer.avatar}</div>
+            <div>
+              <div style={{fontSize:13,fontWeight:700,color:'#e2e8f0'}}>{customer.name}</div>
+              {customer.phone&&<div style={{fontSize:11,color:'rgba(148,163,184,.45)'}}>📞 {customer.phone}</div>}
+            </div>
+          </div>
+
+          {isImport&&lines.length>0&&(
+            <div style={{marginBottom:12,padding:'8px 11px',borderRadius:9,background:'rgba(251,191,36,.07)',border:'1px solid rgba(251,191,36,.15)',fontSize:11,color:'#fbbf24',lineHeight:1.6}}>
+              📦 {lines.filter(l=>!products.find(p=>p.id===l.id&&p.qty!==l.qty)).length} منتج جديد سيُضاف للمخزون
+            </div>
+          )}
+
+          <div style={{display:'flex',justifyContent:'space-between',fontSize:12,marginBottom:9}}>
+            <span style={{color:'rgba(148,163,184,.65)'}}>{isImport?'إجمالي التكلفة':'المجموع الجزئي'}</span>
+            <span style={{fontWeight:700,color:'#e2e8f0',direction:'ltr'}}>{fmtPrice(subtotal)} أوق</span>
+          </div>
+
+          <div style={{marginBottom:13}}>
+            <div style={{fontSize:11,color:'rgba(148,163,184,.55)',marginBottom:6,fontWeight:600}}>الخصم</div>
+            <div style={{display:'flex',gap:4,flexWrap:'wrap',marginBottom:6}}>
+              {[0,5,10,15,20].map(d=>(
+                <button key={d} className='btn' onClick={()=>{setDiscount(d);setCustomDisc('');}} style={{flex:1,minWidth:30,padding:'4px 2px',borderRadius:7,border:(discount===d&&!customDisc)?'1px solid #63b3ed':'1px solid rgba(255,255,255,.1)',background:(discount===d&&!customDisc)?'rgba(99,179,237,.15)':'rgba(255,255,255,.04)',color:(discount===d&&!customDisc)?'#63b3ed':'rgba(148,163,184,.6)',fontSize:11,fontWeight:700}}>
+                  {d}%
+                </button>
+              ))}
+            </div>
+            <input className='inp' inputMode='numeric' placeholder='خصم مخصص %...' value={customDisc} onChange={e=>setCustomDisc(e.target.value)} style={{fontSize:12,padding:'7px 10px'}}/>
+            {effDisc>0&&(
+              <div style={{display:'flex',justifyContent:'space-between',marginTop:7,fontSize:12}}>
+                <span style={{color:'#f87171'}}>الخصم ({effDisc}%)</span>
+                <span style={{fontWeight:700,color:'#f87171',direction:'ltr'}}>- {fmtPrice(discAmt)} أوق</span>
+              </div>
+            )}
+          </div>
+
+          <div style={{borderTop:'1px solid rgba(255,255,255,.07)',paddingTop:11,marginBottom:14}}>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+              <span style={{fontSize:13,fontWeight:700,color:'#94a3b8'}}>الإجمالي</span>
+              <span style={{fontSize:19,fontWeight:900,color:accentColor,direction:'ltr'}}>{fmtPrice(total)} <span style={{fontSize:11,fontWeight:400}}>أوق</span></span>
+            </div>
+          </div>
+
+          <button className='btn' onClick={confirmInvoice} disabled={lines.length===0}
+            style={{width:'100%',padding:12,background:lines.length?(isImport?'linear-gradient(135deg,#d97706,#fbbf24)':'linear-gradient(135deg,#059669,#10b981)'):'rgba(255,255,255,.05)',border:'none',borderRadius:11,color:lines.length?'#fff':'rgba(148,163,184,.25)',fontWeight:900,fontSize:13,boxShadow:lines.length?`0 4px 14px ${isImport?'rgba(217,119,6,.28)':'rgba(5,150,105,.28)'}`:'none',marginBottom:7}}>
+            {isImport?'📦 تأكيد الاستيراد وطباعة':'🖨️ تأكيد البيع وطباعة'}
+          </button>
+          <button className='btn' onClick={()=>setStep(1)} style={{width:'100%',padding:9,background:'transparent',border:'1px solid rgba(255,255,255,.08)',borderRadius:11,color:'rgba(148,163,184,.45)',fontWeight:600,fontSize:12}}>
+            ← تغيير {isImport?'المورد':'العميل'}
+          </button>
+        </div>
+      </div>
+
+      {/* BELOW COST WARNING — export only */}
+      {belowCostWarning&&(
+        <Overlay onClose={()=>setBelowCostWarning(null)}>
+          <div className='pop-in' onClick={e=>e.stopPropagation()} style={{background:'#0d1525',border:'1px solid rgba(239,68,68,.3)',borderRadius:20,padding:26,maxWidth:380,width:'100%',boxShadow:'0 24px 60px rgba(0,0,0,.65)',textAlign:'center'}}>
+            <div style={{fontSize:46,marginBottom:10}}>⚠️</div>
+            <div style={{fontSize:17,fontWeight:900,color:'#fbbf24',marginBottom:8}}>تحذير: بيع بخسارة!</div>
+            <div style={{fontSize:13,color:'rgba(148,163,184,.8)',marginBottom:5,lineHeight:1.6}}>
+              سعر البيع <strong style={{color:'#f87171',direction:'ltr'}}>{fmtPrice(belowCostWarning.newPrice)} أوق</strong> أقل من سعر التكلفة <strong style={{color:'#34d399',direction:'ltr'}}>{fmtPrice(belowCostWarning.originalPrice)} أوق</strong>
+            </div>
+            <div style={{fontSize:12,color:'rgba(148,163,184,.55)',marginBottom:20}}>{belowCostWarning.productName}</div>
+            <div style={{display:'flex',gap:9}}>
+              <button className='btn' onClick={()=>{setLines(p=>p.map(l=>l.id===belowCostWarning.lineId?{...l,sellPrice:belowCostWarning.originalPrice}:l));setBelowCostWarning(null);}} style={{flex:1,padding:11,background:'rgba(52,211,153,.1)',border:'1px solid rgba(52,211,153,.25)',borderRadius:11,color:'#34d399',fontWeight:700,fontSize:13}}>
+                ← إعادة السعر الأصلي
+              </button>
+              <button className='btn' onClick={()=>setBelowCostWarning(null)} style={{flex:1,padding:11,background:'rgba(239,68,68,.12)',border:'1px solid rgba(239,68,68,.3)',borderRadius:11,color:'#f87171',fontWeight:700,fontSize:13}}>
+                تأكيد السعر الجديد
+              </button>
+            </div>
+          </div>
+        </Overlay>
+      )}
+    </div>
+  );
+}
+
+
+function PrintableInvoice({inv}){
+  const{num,customer,lines,subtotal,discount,discAmt,total,date,note}=inv;
+  return(
+    <div style={{fontFamily:"'Cairo',sans-serif",direction:'rtl',color:'#111',maxWidth:680,margin:'0 auto'}}>
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:26,paddingBottom:16,borderBottom:'3px solid #1e40af'}}>
+        <div>
+          <div style={{fontSize:24,fontWeight:900,color:'#1e40af'}}>محل العدالة ⚡</div>
+          {inv.type==='import'&&<div style={{fontSize:11,marginTop:4,padding:'2px 9px',display:'inline-block',borderRadius:50,background:'#fef3c7',color:'#d97706',fontWeight:700}}>📦 فاتورة استيراد</div>}
+          <div style={{fontSize:12,color:'#64748b',marginTop:3}}>للهواتف والاكسسوارات</div>
+        </div>
+        <div style={{textAlign:'left'}}>
+          <div style={{fontSize:17,fontWeight:800,color:'#1e40af',direction:'ltr'}}>{num}</div>
+          <div style={{fontSize:12,color:'#64748b',marginTop:3,direction:'ltr'}}>{date}</div>
+        </div>
+      </div>
+      <div style={{background:'#f8fafc',borderRadius:10,padding:'11px 15px',marginBottom:20,display:'flex',alignItems:'center',gap:12}}>
+        <div style={{fontSize:24}}>{customer.avatar}</div>
+        <div>
+          <div style={{fontSize:11,color:'#94a3b8',marginBottom:1}}>فاتورة إلى</div>
+          <div style={{fontSize:15,fontWeight:800,color:'#1e293b'}}>{customer.name}</div>
+          {customer.phone&&<div style={{fontSize:12,color:'#64748b',direction:'ltr'}}>📞 {customer.phone}</div>}
+        </div>
+      </div>
+      <table style={{width:'100%',borderCollapse:'collapse',marginBottom:16,fontSize:12}}>
+        <thead>
+          <tr style={{background:'#1e40af',color:'#fff'}}>
+            {['المنتج','الكمية','سعر البيع','الإجمالي'].map(h=>(
+              <th key={h} style={{padding:'8px 11px',textAlign:'right',fontWeight:700}}>{h}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {lines.map((l,i)=>(
+            <tr key={l.id} style={{background:i%2===0?'#fff':'#f8fafc',borderBottom:'1px solid #e2e8f0'}}>
+              <td style={{padding:'8px 11px',fontWeight:600}}>{l.name}</td>
+              <td style={{padding:'8px 11px',textAlign:'center',direction:'ltr'}}>{l.qty}</td>
+              <td style={{padding:'8px 11px',direction:'ltr',textAlign:'left'}}>{fmtPrice(l.sellPrice)} أوق</td>
+              <td style={{padding:'8px 11px',fontWeight:700,color:'#1e40af',direction:'ltr',textAlign:'left'}}>{fmtPrice(l.sellPrice*l.qty)} أوق</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <div style={{marginLeft:'auto',maxWidth:255,marginBottom:16}}>
+        <div style={{display:'flex',justifyContent:'space-between',padding:'6px 0',borderBottom:'1px solid #e2e8f0',fontSize:12}}>
+          <span style={{color:'#64748b'}}>المجموع الجزئي</span>
+          <span style={{fontWeight:600,direction:'ltr'}}>{fmtPrice(subtotal)} أوق</span>
+        </div>
+        {discAmt>0&&(
+          <div style={{display:'flex',justifyContent:'space-between',padding:'6px 0',borderBottom:'1px solid #e2e8f0',fontSize:12}}>
+            <span style={{color:'#ef4444'}}>خصم ({discount}%)</span>
+            <span style={{fontWeight:600,color:'#ef4444',direction:'ltr'}}>- {fmtPrice(discAmt)} أوق</span>
+          </div>
+        )}
+        <div style={{display:'flex',justifyContent:'space-between',padding:'10px 10px',background:'#eff6ff',borderRadius:8,marginTop:4}}>
+          <span style={{fontWeight:800,color:'#1e40af',fontSize:14}}>الإجمالي النهائي</span>
+          <span style={{fontWeight:900,color:'#1e40af',fontSize:16,direction:'ltr'}}>{fmtPrice(total)} أوق</span>
+        </div>
+      </div>
+      {note&&(
+        <div style={{background:'#fefce8',borderRadius:9,padding:'9px 13px',marginBottom:14,borderRight:'3px solid #eab308'}}>
+          <div style={{fontSize:10,color:'#92400e',fontWeight:700,marginBottom:3}}>ملاحظة</div>
+          <div style={{fontSize:12,color:'#713f12'}}>{note}</div>
+        </div>
+      )}
+      <div style={{textAlign:'center',marginTop:26,paddingTop:14,borderTop:'1px solid #e2e8f0',fontSize:11,color:'#94a3b8'}}>
+        شكراً لتعاملكم معنا — محل العدالة للهواتف والاكسسوارات
+      </div>
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════════
+   CUSTOMER VIEW
+══════════════════════════════════════════════ */
+function CustomerView({products,onLogout}){
+  const[search,setSearch]=useState('');
+  const[cat,setCat]=useState('الكل');
+  const[sort,setSort]=useState('default');
+  const[sel,setSel]=useState(null);
+
+  const filtered=useMemo(()=>{
+    let r=products.filter(p=>{
+      const mc=cat==='الكل'||p.category===cat;
+      const ms=p.name.toLowerCase().includes(search.toLowerCase());
+      return mc&&ms;
+    });
+    if(sort==='price-asc')r=[...r].sort((a,b)=>a.price-b.price);
+    if(sort==='price-desc')r=[...r].sort((a,b)=>b.price-a.price);
+    return r;
+  },[products,search,cat,sort]);
+
+  return(
+    <div style={{minHeight:'100vh',background:'linear-gradient(160deg,#060a14,#0a1628,#060d1e)'}}>
+      <div style={{position:'fixed',inset:0,pointerEvents:'none'}}>
+        <div style={{position:'absolute',top:'-15%',right:'-5%',width:500,height:500,borderRadius:'50%',background:'radial-gradient(circle,rgba(52,211,153,.07) 0%,transparent 65%)',filter:'blur(45px)'}}/>
+        <div style={{position:'absolute',bottom:'-10%',left:'-5%',width:400,height:400,borderRadius:'50%',background:'radial-gradient(circle,rgba(99,179,237,.06) 0%,transparent 65%)',filter:'blur(45px)'}}/>
+      </div>
+
+      {/* Header */}
+      <header style={{position:'sticky',top:0,zIndex:50,background:'rgba(6,10,20,.93)',backdropFilter:'blur(20px)',borderBottom:'1px solid rgba(255,255,255,.06)',padding:'0 22px'}}>
+        <div style={{maxWidth:1200,margin:'0 auto',display:'flex',alignItems:'center',justifyContent:'space-between',height:64}}>
+          <div style={{display:'flex',alignItems:'center',gap:9}}>
+            <div style={{width:36,height:36,borderRadius:11,background:'linear-gradient(135deg,#059669,#10b981)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:16}}>⚡</div>
+            <div>
+              <div style={{fontSize:15,fontWeight:900,color:'#e2e8f0'}}>محل العدالة</div>
+              <div style={{fontSize:10,color:'rgba(148,163,184,.45)'}}>متجر الهواتف والاكسسوارات</div>
+            </div>
+          </div>
+          <div style={{flex:1,maxWidth:340,margin:'0 14px',position:'relative'}}>
+            <span style={{position:'absolute',right:11,top:'50%',transform:'translateY(-50%)',color:'rgba(148,163,184,.45)',fontSize:13}}>🔍</span>
+            <input className='inp' placeholder='ابحث عن منتج...' value={search} onChange={e=>setSearch(e.target.value)} style={{paddingRight:33,fontSize:13}}/>
+          </div>
+          <button className='btn' onClick={onLogout} style={{background:'rgba(255,255,255,.07)',border:'1px solid rgba(255,255,255,.1)',borderRadius:9,padding:'7px 13px',color:'#94a3b8',fontSize:12,fontWeight:600}}>← خروج</button>
+        </div>
+      </header>
+
+      {/* Stats */}
+      <div style={{background:'rgba(52,211,153,.05)',borderBottom:'1px solid rgba(52,211,153,.11)',padding:'8px 22px'}}>
+        <div style={{maxWidth:1200,margin:'0 auto',display:'flex',justifyContent:'center',gap:36,flexWrap:'wrap'}}>
+          {[
+            {i:'📦',l:'عدد المنتجات',v:fmt(products.length)},
+            {i:'✅',l:'متوفر حالياً',v:fmt(products.filter(p=>p.qty>0).length)},
+            {i:'🏷️',l:'الفئات',v:'10'},
+          ].map(s=>(
+            <div key={s.l} style={{display:'flex',alignItems:'center',gap:6,fontSize:12,color:'rgba(255,255,255,.65)'}}>
+              <span style={{fontSize:14}}>{s.i}</span>
+              <span style={{opacity:.6}}>{s.l}:</span>
+              <strong style={{color:'#34d399',direction:'ltr',display:'inline-block'}}>{s.v}</strong>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div style={{maxWidth:1200,margin:'0 auto',padding:'22px 18px',position:'relative',zIndex:1}}>
+        {/* Cat pills */}
+        <div style={{display:'flex',gap:7,marginBottom:14,overflowX:'auto',paddingBottom:3}}>
+          {['الكل',...CATEGORIES].map(c=>{
+            const col=CAT_COLORS[c]||'#34d399';
+            const a=c===cat;
+            return(
+              <button key={c} className='btn' onClick={()=>setCat(c)} style={{padding:'5px 13px',borderRadius:50,border:a?`1px solid ${col}`:'1px solid rgba(255,255,255,.09)',background:a?`${col}18`:'rgba(255,255,255,.04)',color:a?col:'rgba(148,163,184,.65)',fontSize:12,fontWeight:600,whiteSpace:'nowrap',display:'flex',alignItems:'center',gap:4}}>
+                <span>{CAT_ICONS[c]||'📦'}</span>{c}
+                <span style={{background:a?`${col}22`:'rgba(255,255,255,.07)',borderRadius:50,padding:'1px 6px',fontSize:10,fontWeight:700,direction:'ltr'}}>
+                  {c==='الكل'?products.length:products.filter(p=>p.category===c).length}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:14,flexWrap:'wrap',gap:8}}>
+          <div style={{fontSize:12,color:'rgba(148,163,184,.55)'}}>
+            عرض <strong style={{color:'#34d399',direction:'ltr',display:'inline-block'}}>{fmt(filtered.length)}</strong> منتج
+          </div>
+          <select className='inp' value={sort} onChange={e=>setSort(e.target.value)} style={{width:'auto',padding:'6px 12px',fontSize:12}}>
+            <option value='default'>ترتيب افتراضي</option>
+            <option value='price-asc'>السعر: الأقل أولاً</option>
+            <option value='price-desc'>السعر: الأعلى أولاً</option>
+          </select>
+        </div>
+
+        {/* Product grid */}
+        <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(175px,1fr))',gap:12}}>
+          {filtered.map(p=>{
+            const col=CAT_COLORS[p.category]||'#34d399';
+            const emoji=getEmoji(p);
+            const out=p.qty===0;
+            return(
+              <div key={p.id} onClick={()=>setSel(p)} style={{background:'rgba(255,255,255,.04)',border:'1px solid rgba(255,255,255,.07)',borderRadius:15,overflow:'hidden',cursor:'pointer',transition:'all .22s',opacity:out?.58:1}}
+                onMouseEnter={e=>{if(!out){e.currentTarget.style.transform='translateY(-5px)';e.currentTarget.style.boxShadow=`0 14px 32px ${col}20`;e.currentTarget.style.borderColor=col+'44';}}}
+                onMouseLeave={e=>{e.currentTarget.style.transform='translateY(0)';e.currentTarget.style.boxShadow='none';e.currentTarget.style.borderColor='rgba(255,255,255,.07)';}}>
+                <div style={{height:3,background:`linear-gradient(90deg,${col},${col}66)`}}/>
+                <div style={{padding:'17px 13px 9px',textAlign:'center',background:`radial-gradient(circle at 50% 0%,${col}11 0%,transparent 70%)`}}>
+                  <div style={{fontSize:38,lineHeight:1,marginBottom:7,filter:'drop-shadow(0 3px 6px rgba(0,0,0,.4))'}}>{emoji}</div>
+                  <span className='tag' style={{background:`${col}18`,color:col,border:`1px solid ${col}28`,fontSize:10}}>{CAT_ICONS[p.category]||'📦'} {p.category}</span>
+                </div>
+                <div style={{padding:'7px 13px 13px'}}>
+                  <div style={{fontSize:12,fontWeight:700,color:'#e2e8f0',marginBottom:7,lineHeight:1.35,minHeight:34,display:'-webkit-box',WebkitLineClamp:2,WebkitBoxOrient:'vertical',overflow:'hidden'}}>{p.name}</div>
+                  <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                    <div style={{fontSize:15,fontWeight:900,color:col,direction:'ltr'}}>{fmtPrice(p.price)} <span style={{fontSize:9,fontWeight:400}}>أوق</span></div>
+                    {out?<span className='tag' style={{background:'rgba(239,68,68,.12)',color:'#f87171',border:'1px solid rgba(239,68,68,.2)',fontSize:10}}>نفذ</span>
+                    :<span style={{fontSize:10,color:'rgba(148,163,184,.45)',background:'rgba(255,255,255,.05)',borderRadius:7,padding:'2px 7px'}}>متوفر</span>}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {sel&&(
+        <Overlay onClose={()=>setSel(null)}>
+          <div className='pop-in' onClick={e=>e.stopPropagation()} style={{background:'#0d1525',border:'1px solid rgba(255,255,255,.11)',borderRadius:22,padding:26,maxWidth:360,width:'100%'}}>
+            {(()=>{
+              const col=CAT_COLORS[sel.category]||'#34d399';
+              return(
+                <>
+                  <button className='btn' onClick={()=>setSel(null)} style={{position:'absolute',top:14,left:14,background:'rgba(255,255,255,.07)',border:'none',color:'#94a3b8',width:28,height:28,borderRadius:8,fontSize:14,display:'flex',alignItems:'center',justifyContent:'center'}}>✕</button>
+                  <div style={{textAlign:'center',marginBottom:18}}>
+                    <div style={{fontSize:60,marginBottom:11,filter:'drop-shadow(0 6px 12px rgba(0,0,0,.5))'}}>{getEmoji(sel)}</div>
+                    <span className='tag' style={{background:`${col}18`,color:col,border:`1px solid ${col}28`,display:'inline-flex',marginBottom:10}}>{CAT_ICONS[sel.category]||'📦'} {sel.category}</span>
+                    <div style={{fontSize:17,fontWeight:900,color:'#e2e8f0',lineHeight:1.3,marginTop:8}}>{sel.name}</div>
+                  </div>
+                  <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:9}}>
+                    {[
+                      {l:'السعر',v:`${fmtPrice(sel.price)} أوقية`,i:'💰',c:'#63b3ed'},
+                      {l:'الكمية المتوفرة',v:sel.qty>0?fmt(sel.qty)+' قطعة':'نفذ المخزون',i:'📦',c:sel.qty>0?'#34d399':'#f87171'},
+                      {l:'الفئة',v:sel.category,i:'🏷️',c:col,full:true},
+                    ].map(s=>(
+                      <div key={s.l} style={{background:'rgba(255,255,255,.04)',border:'1px solid rgba(255,255,255,.07)',borderRadius:11,padding:'11px 13px',gridColumn:s.full?'1/-1':undefined}}>
+                        <div style={{fontSize:17,marginBottom:3}}>{s.i}</div>
+                        <div style={{fontSize:10,color:'rgba(148,163,184,.45)',marginBottom:3}}>{s.l}</div>
+                        <div style={{fontSize:13,fontWeight:700,color:s.c,direction:'ltr'}}>{s.v}</div>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              );
+            })()}
+          </div>
+        </Overlay>
+      )}
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════════
+   SHARED MICRO-COMPONENTS
+══════════════════════════════════════════════ */
+function Overlay({children,onClose}){
+  useEffect(()=>{
+    document.body.style.overflow='hidden';
+    return()=>{document.body.style.overflow='';};
+  },[]);
+  const el=document.getElementById('modal-root');
+  if(!el)return null;
+  return ReactDOM.createPortal(
+    <div onClick={onClose} style={{position:'fixed',top:0,left:0,right:0,bottom:0,zIndex:99999,background:'rgba(0,0,0,.8)',backdropFilter:'blur(8px)',display:'flex',alignItems:'center',justifyContent:'center',padding:'20px',overflowY:'auto'}}>
+      {children}
+    </div>,
+    el
+  );
+}
+
+function Modal({children,onClose,title,maxW=480}){
+  return(
+    <Overlay onClose={onClose}>
+      <div className='pop-in' onClick={e=>e.stopPropagation()} style={{background:'#0d1525',border:'1px solid rgba(255,255,255,.1)',borderRadius:20,padding:22,width:'100%',maxWidth:maxW,boxShadow:'0 20px 60px rgba(0,0,0,.65)',maxHeight:'90vh',overflowY:'auto'}}>
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:18}}>
+          <div style={{fontSize:15,fontWeight:900,color:'#e2e8f0'}}>{title}</div>
+          <Xbtn onClick={onClose}/>
+        </div>
+        {children}
+      </div>
+    </Overlay>
+  );
+}
+
+function Xbtn({onClick}){
+  return(
+    <button className='btn' onClick={onClick} style={{background:'rgba(255,255,255,.07)',border:'none',color:'#94a3b8',width:29,height:29,borderRadius:8,fontSize:14,display:'flex',alignItems:'center',justifyContent:'center'}}>✕</button>
+  );
+}
+
+function Lbl({children}){
+  return <div style={{fontSize:11,color:'rgba(148,163,184,.6)',marginBottom:5,fontWeight:600}}>{children}</div>;
+}
+
+function Btn({children,onClick,disabled}){
+  return(
+    <button className='btn' onClick={onClick} disabled={disabled} style={{width:'100%',padding:12,background:disabled?'rgba(255,255,255,.05)':'linear-gradient(135deg,#3b82f6,#8b5cf6)',border:'none',borderRadius:11,color:disabled?'rgba(148,163,184,.25)':'#fff',fontWeight:900,fontSize:14,boxShadow:disabled?'none':'0 4px 14px rgba(59,130,246,.28)'}}>
+      {children}
+    </button>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>
