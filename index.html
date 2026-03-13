@@ -61,7 +61,7 @@ input:focus,select:focus,textarea:focus{outline:none}
   /* Bottom nav bar replaces sidebar */
   .sidebar-desktop{ display:none!important }
   .bottom-nav{ display:flex!important }
- 
+
   /* Main content full width with bottom padding for nav */
   .admin-main{ padding:14px 12px 80px!important }
 
@@ -739,6 +739,15 @@ function App(){
 
   // ── Delete invoice from Firebase too ──
   function deleteInvoiceFb(id){
+    // Find invoice before deleting
+    const inv=invoices.find(i=>i.id===id);
+    // If it's a sale invoice (export), restore stock
+    if(inv&&inv.type!=='import'&&inv.lines){
+      setProducts(prev=>prev.map(p=>{
+        const line=inv.lines.find(l=>l.id===p.id);
+        return line?{...p,qty:p.qty+line.qty}:p;
+      }));
+    }
     setInvoices(prev=>prev.filter(i=>i.id!==id));
     if(dbReady&&window._fb){
       const {db,doc}=window._fb;
@@ -1541,6 +1550,7 @@ function SavedInvoicesTab({invoices,setInvoices,handlePrint,products,customers,d
           <div style={{textAlign:'center',padding:'10px 0 20px'}}>
             <div style={{fontSize:44,marginBottom:10}}>⚠️</div>
             <div style={{fontSize:14,color:'rgba(148,163,184,.8)',marginBottom:6}}>هل أنت متأكد من حذف هذه الفاتورة؟</div>
+            {(()=>{const inv=invoices.find(i=>i.id===delId);return inv&&inv.type!=='import'&&inv.lines?.length>0&&(<div style={{fontSize:12,padding:'8px 12px',borderRadius:9,background:'rgba(52,211,153,.08)',border:'1px solid rgba(52,211,153,.2)',color:'#34d399',marginBottom:6}}>✅ سيتم إعادة {inv.lines.reduce((s,l)=>s+l.qty,0)} قطعة للمخزون تلقائياً</div>);})()}
             <div style={{fontSize:12,color:'rgba(148,163,184,.45)'}}>لا يمكن التراجع عن هذا الإجراء</div>
           </div>
           <div style={{display:'flex',gap:9}}>
