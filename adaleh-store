@@ -61,7 +61,7 @@ input:focus,select:focus,textarea:focus{outline:none}
   /* Bottom nav bar replaces sidebar */
   .sidebar-desktop{ display:none!important }
   .bottom-nav{ display:flex!important }
-
+ 
   /* Main content full width with bottom padding for nav */
   .admin-main{ padding:14px 12px 80px!important }
 
