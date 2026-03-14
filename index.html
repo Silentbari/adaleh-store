@@ -805,13 +805,18 @@ function App(){
         setTimeout(()=>{skipSave.current=false;},200);
       });
 
-      // Listen projects
+      // Listen projects — always sync (including deletions)
       onSnapshot(collection(db,'projects'), snap=>{
+        // If Firebase has projects, use them (overrides INIT_PROJECTS)
+        // If Firebase is empty, keep local state (first run)
         if(snap.empty) return;
         const data=snap.docs.map(d=>d.data());
-        skipSave.current=true;
-        setProjects(data);
-        setTimeout(()=>{skipSave.current=false;},200);
+        // Only update if Firebase has data (prevents overwrite with empty on delete)
+        if(data.length>0){
+          skipSave.current=true;
+          setProjects(data);
+          setTimeout(()=>{skipSave.current=false;},200);
+        }
       });
 
       // Load settings (password)
@@ -1756,6 +1761,7 @@ function ProjectsTab({projects,setProjects,dbReady}){
   const[monthFilter,setMonthFilter]=useState(''); // 'YYYY-MM'
   const[delTxId,setDelTxId]=useState(null);
   const[editTx,setEditTx]=useState(null); // tx being edited
+  const[confirmDelProj,setConfirmDelProj]=useState(false);
 
   // New project form
   const[npForm,setNpForm]=useState({name:'',icon:'💼',color:'#3b82f6'});
@@ -1766,13 +1772,20 @@ function ProjectsTab({projects,setProjects,dbReady}){
 
   // Delete from Firebase when project deleted
   function deleteProjectFb(id){
+    // Remove from local state immediately
     setProjects(prev=>prev.filter(p=>p.id!==id));
-    if(dbReady&&window._fb){
-      const {db,doc}=window._fb;
-      import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js")
-        .then(({deleteDoc})=>deleteDoc(doc(db,'projects',id))).catch(()=>{});
-    }
     if(selProj===id)setSelProj(null);
+    // Delete from Firebase using already-loaded module
+    if(window._fb){
+      const {db}=window._fb;
+      import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js")
+        .then(mod=>{
+          const docRef=mod.doc(db,'projects',id);
+          return mod.deleteDoc(docRef);
+        })
+        .then(()=>console.log('Project deleted from Firebase:',id))
+        .catch(e=>console.error('Delete failed:',e));
+    }
   }
 
   function addProject(){
@@ -1932,8 +1945,8 @@ function ProjectsTab({projects,setProjects,dbReady}){
           style={{padding:'7px 13px',background:'rgba(255,255,255,.07)',border:'1px solid rgba(255,255,255,.1)',borderRadius:9,color:'#94a3b8',fontSize:13,fontWeight:600}}>← رجوع</button>
         <div style={{width:36,height:36,borderRadius:11,background:`${proj.color}18`,border:`1px solid ${proj.color}35`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:20}}>{proj.icon}</div>
         <h1 style={{fontSize:19,fontWeight:900,color:'#e2e8f0'}}>{proj.name}</h1>
-        <button className='btn' onClick={()=>deleteProjectFb(proj.id)}
-          style={{marginRight:'auto',padding:'5px 10px',background:'rgba(239,68,68,.1)',border:'1px solid rgba(239,68,68,.2)',borderRadius:8,color:'#f87171',fontSize:11,fontWeight:700}}>🗑️ حذف</button>
+        <button className='btn' onClick={()=>setConfirmDelProj(true)}
+          style={{marginRight:'auto',padding:'5px 10px',background:'rgba(239,68,68,.1)',border:'1px solid rgba(239,68,68,.2)',borderRadius:8,color:'#f87171',fontSize:11,fontWeight:700}}>🗑️ حذف المشروع</button>
       </div>
 
       {/* Balance + actions */}
@@ -2068,6 +2081,24 @@ function ProjectsTab({projects,setProjects,dbReady}){
               style={{padding:12,background:(!txForm.amount||!txForm.desc.trim())?'rgba(255,255,255,.05)':showAddTx==='income'?'linear-gradient(135deg,#059669,#10b981)':'linear-gradient(135deg,#dc2626,#ef4444)',border:'none',borderRadius:11,color:(!txForm.amount||!txForm.desc.trim())?'rgba(148,163,184,.3)':'#fff',fontWeight:900,fontSize:14}}>
               {showAddTx==='income'?'✅ إضافة الدخل':'✅ إضافة المصروف'}
             </button>
+          </div>
+        </Modal>
+      )}
+
+      {/* Confirm Delete Project */}
+      {confirmDelProj&&(
+        <Modal onClose={()=>setConfirmDelProj(false)} title='🗑️ حذف المشروع' maxW={340}>
+          <div style={{textAlign:'center',padding:'10px 0 18px'}}>
+            <div style={{fontSize:44,marginBottom:10}}>⚠️</div>
+            <div style={{fontSize:15,fontWeight:800,color:'#f87171',marginBottom:6}}>{proj.name}</div>
+            <div style={{fontSize:13,color:'rgba(148,163,184,.75)',marginBottom:4}}>هل أنت متأكد من حذف هذا المشروع؟</div>
+            <div style={{fontSize:11,color:'rgba(148,163,184,.4)'}}>سيتم حذف جميع العمليات ({fmt((proj.transactions||[]).length)} عملية) ولا يمكن التراجع</div>
+          </div>
+          <div style={{display:'flex',gap:9}}>
+            <button className='btn' onClick={()=>setConfirmDelProj(false)}
+              style={{flex:1,padding:11,background:'rgba(255,255,255,.06)',border:'1px solid rgba(255,255,255,.1)',borderRadius:11,color:'#94a3b8',fontWeight:700}}>إلغاء</button>
+            <button className='btn' onClick={()=>{deleteProjectFb(proj.id);setConfirmDelProj(false);}}
+              style={{flex:1,padding:11,background:'rgba(239,68,68,.18)',border:'1px solid rgba(239,68,68,.35)',borderRadius:11,color:'#f87171',fontWeight:900}}>🗑️ حذف نهائياً</button>
           </div>
         </Modal>
       )}
